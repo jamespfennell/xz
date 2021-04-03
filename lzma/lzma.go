@@ -3,84 +3,104 @@
 // The emphasis is on the word "thin". This package does not provide an
 // idiomatic Go API; rather, it simply wraps C functions and types with
 // analogous Go functions and types.
+// A nice Go API should be built on top of this package.
+//
+// The documentation for each type and function in this package generally just
+// contains a reference to
+// to the underlying C type or function in the /src/liblzma/api/ directory of the
+// upstream C repository. Full documentation for the type and function can be found
+// by looking at the excellent documentation on the C side.
 package lzma
 
 /*
 #cgo LDFLAGS: -llzma -L/home/james/git/xz/
-#include "stdlib.h"
-#include <stdio.h>
 #include "../xz/src/liblzma/api/lzma.h"
 
-// This function is needed to cast from the macro LZMA_STREAM_INIT to lzma_stream
-// in a way the Go and C compilers understands.
+// The lzma library requires that the stream be initialized to the value of the macro
+// LZMA_STREAM_INIT. Because this is a macro it has no type. This function exists to cast the
+// macro to the stream type.
 lzma_stream new_stream() {
 	lzma_stream strm = LZMA_STREAM_INIT;
 	return strm;
 }
 
-void read_out(lzma_stream* strm, uint8_t* buf) {
-	int i;
-	for (i=-24; i<500; i++) {
-		printf("%d ", strm->next_out[i]);
-		buf[i] = strm->next_out[i];
-	}
-	fflush(stdout);
-}
 */
 import "C"
 import (
-	"fmt"
 	"unsafe"
 )
 
-type Result int
+// Return corresponds to the lzma_ret type in base.h.
+type Return int
 
 const (
-	Ok Result = 0
-	StreamEnd = 1
-	NoCheck = 2
-	UnsupportedCheck = 3
-	GetCheck = 4
-	MemoryError = 5
-	MemoryLimitError = 6
-	FormatError = 7
-	OptionsError = 8
-	DataError = 9
-	BufferError = 10
-	ProgrammingError = 11
-	SeekNeeded = 12
+	Ok               Return = 0
+	StreamEnd               = 1
+	NoCheck                 = 2
+	UnsupportedCheck        = 3
+	GetCheck                = 4
+	MemoryError             = 5
+	MemoryLimitError        = 6
+	FormatError             = 7
+	OptionsError            = 8
+	DataError               = 9
+	BufferError             = 10
+	ProgrammingError        = 11
+	SeekNeeded              = 12
 )
 
+func (r Return) String() string {
+	switch r {
+	case Ok:
+		return "OK"
+	case StreamEnd:
+		return "STREAM_END"
+	case NoCheck:
+		return "NO_CHECK"
+	case UnsupportedCheck:
+		return "UNSUPPORTED_CHECK"
+	case GetCheck:
+		return "GET_CHECK"
+	case MemoryError:
+		return "MEMORY_ERROR"
+	case MemoryLimitError:
+		return "MEMORY_LIMIT_ERROR"
+	case FormatError:
+		return "FORMAT_ERROR"
+	case OptionsError:
+		return "OPTIONS_ERROR"
+	case DataError:
+		return "DATA_ERROR"
+	case BufferError:
+		return "BUFFER_ERROR"
+	case ProgrammingError:
+		return "PROGRAMMING_ERROR"
+	case SeekNeeded:
+		return "SEEK_NEEDED"
+	}
+	return "UNKNOWN_RESULT"
+}
+
+// Action corresponds to the lzma_action type in base.h.
 type Action int
 
 const (
-	Run Action = 0
-	SyncFlush = 1
-	FullFlush = 2
-	Finish = 3
-	FullBarrier = 4
+	Run         Action = 0
+	SyncFlush          = 1
+	FullFlush          = 2
+	Finish             = 3
+	FullBarrier        = 4
 )
-
-// Stream wraps lzma_stream in base.h
-type Stream struct {
-	cStream C.lzma_stream
-	input cBuffer
-	output cBuffer
-}
-
-func NewStream() *Stream {
-	return &Stream{
-		cStream: C.new_stream(),
-	}
-}
 
 type cBuffer struct {
 	start *C.uint8_t
-	len C.size_t
+	len   C.size_t
+	// TODO: capacity?
 }
 
 func (buf *cBuffer) set(p []byte) {
 	// TODO: instead of allocating for each SetInput, allocate once and copy over?
+	// TODO: in all cases need to fix the memory leak here
 	//if stream.cStream.next_in != nil {
 	//	C.free(unsafe.Pointer(stream.cStream.next_in))
 	//}
@@ -88,64 +108,92 @@ func (buf *cBuffer) set(p []byte) {
 	buf.len = C.size_t(len(p))
 }
 
-func (buf *cBuffer) read() []byte {
-	return C.GoBytes(unsafe.Pointer(buf.start), C.int(buf.len))
+func (buf *cBuffer) read(length int) []byte {
+	return C.GoBytes(unsafe.Pointer(buf.start), C.int(length))
 }
 
-// TODO: to go from the C buf to a go slice:
-// To create a Go slice with the contents of C.my_buf:
+// Stream wraps lzma_stream in base.h and the input and output buffers that the lzma_stream type
+// requires to exist.
 //
-// arr := C.GoBytes(unsafe.Pointer(&C.my_buf), C.BUF_SIZE)
-// SetInput
+// The lzma_stream type operates on the two buffers but does not take ownership of them. This
+// type thus contains handling for these buffers. This part of the package is the most Go-like
+// because it needs to map from Go slices to C arrays, and ultimately hide the C implementation
+// details.
+type Stream struct {
+	cStream C.lzma_stream
+	input   cBuffer
+	output  cBuffer
+}
 
-// TODO Other direction:
-// C.CBytes([]byte) unsafe.Pointer
+// NewStream returns a new stream.
+func NewStream() *Stream {
+	return &Stream{
+		cStream: C.new_stream(),
+	}
+}
+
+// AvailIn returns the number of bytes that have been placed in the input buffer using the SetInput
+// method that have yet to be processed by the stream.
+func (stream *Stream) AvailIn() int {
+	return int(stream.cStream.avail_in)
+}
+
+// TotalIn returns the total number of bytes that have been read from the input buffer.
+func (stream *Stream) TotalIn() int {
+	return int(stream.cStream.total_in)
+}
+
+// AvailOut returns the number of bytes that the stream has written into the output buffer that
+// have yet to be read using the Output method.
+func (stream *Stream) AvailOut() int {
+	return int(stream.cStream.avail_out)
+}
+
+// TotalOut returns the total number of bytes that have been written to the input buffer
+func (stream *Stream) TotalOut() int {
+	return int(stream.cStream.total_out)
+}
 
 func (stream *Stream) SetInput(p []byte) {
+	// TODO: error if avail_in > 0
+	//  Or change to ExtendInput
 	stream.input.set(p)
 	stream.cStream.next_in = stream.input.start
 	stream.cStream.avail_in = stream.input.len
 }
 
+// SetOutputLen sets the length of the output buffer.
 func (stream *Stream) SetOutputLen(length int) {
 	// TODO: this is very memory inefficient!
+	// TODO: if the output buffer has data already, this needs to be copied over
 	p := make([]byte, length)
 	stream.output.set(p)
 	stream.cStream.next_out = stream.output.start
 	stream.cStream.avail_out = stream.output.len
 }
 
+// Output returns all bytes that have been written to the output buffer by the stream, and resets
+// the output buffer.
 func (stream *Stream) Output() []byte {
-
-
-	fmt.Println(stream.output.read())
-	fmt.Println(stream.output.read()[:int(stream.cStream.total_out)])
-	fmt.Println("total_in", stream.cStream.total_in)
-	fmt.Println("total_out", stream.cStream.total_out)
-	fmt.Println("avail_out (actual)", stream.cStream.avail_out)
-
-	return stream.output.read()[:int(stream.cStream.total_out)]
-	//C.read_out(&stream.cStream, (*C.uint8_t)(unsafe.Pointer(&p[0])))
-
+	b := stream.output.read(int(stream.output.len - stream.cStream.avail_out))
+	stream.cStream.next_out = stream.output.start
+	stream.cStream.avail_out = stream.output.len
+	return b
 }
 
+// Close closes the stream and releases C memory that has been allocated by the type.
 func (stream *Stream) Close() {
-	//if stream.cStream.next_in != nil {
-	//	C.free(unsafe.Pointer(stream.cStream.next_in))
-	//}
-	//if stream.cStream.next_out != nil {
-	//	C.free(unsafe.Pointer(stream.cStream.next_out))
-	//}
+	// TODO: close the two buffers to free memory therein
 	C.lzma_end(&stream.cStream)
 }
 
-// EasyEncoder wraps lzma_easy_encoder in container.h
-func EasyEncoder(stream *Stream, preset int) Result {
-	// TODO: support check
-	return Result(C.lzma_easy_encoder(&stream.cStream, C.uint(preset), 0))
+// EasyEncoder wraps lzma_easy_encoder in container.h.
+func EasyEncoder(stream *Stream, preset int) Return {
+	// TODO: support check?
+	return Return(C.lzma_easy_encoder(&stream.cStream, C.uint(preset), 0))
 }
 
-// Code wraps lzma_code in base.h
-func Code(stream *Stream, action Action) Result {
-	return Result(C.lzma_code(&stream.cStream, C.lzma_action(action)))
+// Code wraps lzma_code in base.h.
+func Code(stream *Stream, action Action) Return {
+	return Return(C.lzma_code(&stream.cStream, C.lzma_action(action)))
 }
