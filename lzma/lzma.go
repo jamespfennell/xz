@@ -13,7 +13,7 @@
 package lzma
 
 /*
-#cgo LDFLAGS: -llzma -L/home/james/git/xz/
+#cgo LDFLAGS: -llzma
 #include "../xz/src/liblzma/api/lzma.h"
 
 // The lzma library requires that the stream be initialized to the value of the macro

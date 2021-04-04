@@ -40,9 +40,10 @@ func NewWriterLevel(w io.Writer, level int) *Writer {
 		level = BestCompression
 	}
 	s := lzma.NewStream()
-	// TODO: check error?
+	// TODO: leave a comment if there's an error
 	lzma.EasyEncoder(s, level)
 	// TODO: configurable? See what zstd and gzip do here
+	//  Just benchmark on some huge files and see what happens
 	s.SetOutputLen(500)
 	return &Writer{
 		lzmaStream: s,
@@ -60,13 +61,8 @@ func (z *Writer) Close() error {
 		return err
 	}
 	for {
-		// TODO: maybe have a threshold here like if the buffer is more than 75%
-		//  full then write it out?
-		//  See what zstd does
-		//  May be a premature optimization
 		if z.lzmaStream.AvailOut() == 0 {
-			_, err := z.w.Write(z.lzmaStream.Output())
-			if err != nil {
+			if _, err := z.w.Write(z.lzmaStream.Output()); err != nil {
 				return err
 			}
 		}
@@ -93,8 +89,7 @@ func (z *Writer) consumeInput() (int, error) {
 			break
 		}
 		if z.lzmaStream.AvailOut() == 0 {
-			_, err = z.w.Write(z.lzmaStream.Output())
-			if err != nil {
+			if _, err = z.w.Write(z.lzmaStream.Output()); err != nil {
 				break
 			}
 		}
@@ -104,6 +99,5 @@ func (z *Writer) consumeInput() (int, error) {
 			break
 		}
 	}
-	// TODO: output the rest of the output buffer?
 	return z.lzmaStream.TotalIn() - start, err
 }

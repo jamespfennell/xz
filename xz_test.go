@@ -2,24 +2,38 @@ package xz
 
 import (
 	"bytes"
+	_ "embed"
 	"fmt"
 	"io"
 	"os/exec"
 	"testing"
 )
 
-func TestWriterAgreesWithShellCmd(t *testing.T) {
-	for compression := BestSpeed; compression <= BestCompression; compression++ {
-		t.Run(fmt.Sprintf("compression level %d", compression), func(t *testing.T) {
-			input := []byte("my string to compress")
-			var output bytes.Buffer
-			w := NewWriterLevel(&output, compression)
-			_, err := io.Copy(w, bytes.NewReader(input))
-			nilErrOrFail(t, err, "writing to the xz writer")
-			nilErrOrFail(t, w.Close(), "closing the xz writer")
+//go:embed alice_in_wonderland.txt
+var aliceInWonderland []byte
 
-			expectBytesEqual(t, xzShellCmdDecompress(t, output.Bytes()), input)
-		})
+const smallString = "my string to compress"
+
+func TestWriterAgreesWithShellCmd(t *testing.T) {
+	strings := [][]byte{
+		[]byte(smallString),
+		aliceInWonderland,
+	}
+	for _, input := range strings {
+		for compression := BestSpeed; compression <= BestCompression; compression++ {
+			t.Run(
+				fmt.Sprintf(
+					"input %s... / compression level %d", string(input)[:10], compression),
+				func(t *testing.T) {
+					var output bytes.Buffer
+					w := NewWriterLevel(&output, compression)
+					_, err := io.Copy(w, bytes.NewReader(input))
+					nilErrOrFail(t, err, "writing to the xz writer")
+					nilErrOrFail(t, w.Close(), "closing the xz writer")
+
+					expectBytesEqual(t, xzShellCmdDecompress(t, output.Bytes()), input)
+				})
+		}
 	}
 }
 

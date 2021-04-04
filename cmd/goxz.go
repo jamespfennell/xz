@@ -16,6 +16,7 @@ func main() {
 
 	w.Close()
 
+	// HE
 	file.Close()
 	return
 }
