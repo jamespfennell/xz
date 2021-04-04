@@ -14,7 +14,12 @@ var aliceInWonderland []byte
 
 const smallString = "my string to compress"
 
-func TestWriterAgreesWithShellCmd(t *testing.T) {
+type testCase struct {
+	input       []byte
+	compression int
+}
+
+func runOverAllTestCases(t *testing.T, fn func(*testing.T, testCase)) {
 	strings := [][]byte{
 		[]byte(smallString),
 		aliceInWonderland,
@@ -25,16 +30,54 @@ func TestWriterAgreesWithShellCmd(t *testing.T) {
 				fmt.Sprintf(
 					"input %s... / compression level %d", string(input)[:10], compression),
 				func(t *testing.T) {
-					var output bytes.Buffer
-					w := NewWriterLevel(&output, compression)
-					_, err := io.Copy(w, bytes.NewReader(input))
-					nilErrOrFail(t, err, "writing to the xz writer")
-					nilErrOrFail(t, w.Close(), "closing the xz writer")
-
-					expectBytesEqual(t, xzShellCmdDecompress(t, output.Bytes()), input)
-				})
+					fn(t, testCase{
+						input:       input,
+						compression: compression,
+					})
+				},
+			)
 		}
 	}
+}
+
+func TestWriterReaderRoundTrip(t *testing.T) {
+	runOverAllTestCases(t, func(t *testing.T, tc testCase) {
+		var output bytes.Buffer
+		w := NewWriterLevel(&output, tc.compression)
+		_, err := io.Copy(w, bytes.NewReader(tc.input))
+		nilErrOrFail(t, err, "writing to the xz writer")
+		nilErrOrFail(t, w.Close(), "closing the xz writer")
+
+		r := NewReader(&output)
+		reconstructedInput, err := io.ReadAll(r)
+		nilErrOrFail(t, err, "reading from xz reader")
+		expectBytesEqual(t, reconstructedInput, tc.input)
+	})
+}
+
+func TestWriterAgreesWithShellCmd(t *testing.T) {
+	runOverAllTestCases(t, func(t *testing.T, tc testCase) {
+		var output bytes.Buffer
+		w := NewWriterLevel(&output, tc.compression)
+		_, err := io.Copy(w, bytes.NewReader(tc.input))
+		nilErrOrFail(t, err, "writing to the xz writer")
+		nilErrOrFail(t, w.Close(), "closing the xz writer")
+
+		expectBytesEqual(t, xzShellCmdDecompress(t, output.Bytes()), tc.input)
+	})
+
+}
+
+func TestReaderAgreesWithShellCmd(t *testing.T) {
+	runOverAllTestCases(t, func(t *testing.T, tc testCase) {
+		output := xzShellCmdCompress(t, tc.compression, tc.input)
+
+		r := NewReader(bytes.NewReader(output))
+		reconstructedInput, err := io.ReadAll(r)
+		nilErrOrFail(t, err, "reading from xz reader")
+		expectBytesEqual(t, reconstructedInput, tc.input)
+	})
+
 }
 
 // xzShellCmdDecompress uses the xz command line program to
@@ -46,6 +89,18 @@ func xzShellCmdDecompress(t *testing.T, b []byte) []byte {
 	cmd.Stdin = bytes.NewReader(b)
 	stdout, err := cmd.Output()
 	nilErrOrFail(t, err, "decompressing using the xz shell command")
+	return stdout
+}
+
+// xzShellCmdCompress uses the xz command line program to
+// compress data. It is used to verify that the Go xz writer and the
+// program give compatible results, and thus, under the assumption
+// that the program is correct, that the Go xz writer is correct.
+func xzShellCmdCompress(t *testing.T, level int, b []byte) []byte {
+	cmd := exec.Command("xz", "-z", fmt.Sprintf("-%d", level))
+	cmd.Stdin = bytes.NewReader(b)
+	stdout, err := cmd.Output()
+	nilErrOrFail(t, err, "compressing using the xz shell command")
 	return stdout
 }
 

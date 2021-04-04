@@ -168,7 +168,8 @@ func (stream *Stream) TotalOut() int {
 }
 
 // SetInput sets the input buffer of the stream to be the provided bytes. Note this overwrites
-// any data that is already in the input buffer.
+// any data that is already in the input buffer, so before calling SetInput it's best to verify
+// that AvailIn returns 0.
 func (stream *Stream) SetInput(p []byte) {
 	stream.input.set(p)
 	stream.cStream.next_in = stream.input.start
@@ -188,6 +189,7 @@ func (stream *Stream) Output() []byte {
 func (stream *Stream) Close() {
 	stream.input.clear()
 	stream.output.clear()
+	// TODO: move lzma_end to its own function
 	C.lzma_end(&stream.cStream)
 }
 
@@ -195,6 +197,12 @@ func (stream *Stream) Close() {
 func EasyEncoder(stream *Stream, preset int) Return {
 	// TODO: do integrity checking
 	return Return(C.lzma_easy_encoder(&stream.cStream, C.uint(preset), 0))
+}
+
+// StreamDecoder wraps lzma_stream_decoder in container.h.
+func StreamDecoder(stream *Stream) Return {
+	// TODO: do integrity checking
+	return Return(C.lzma_stream_decoder(&stream.cStream, C.UINT64_MAX, 0))
 }
 
 // Code wraps lzma_code in base.h.
