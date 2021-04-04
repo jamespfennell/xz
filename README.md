@@ -19,8 +19,6 @@ NewWriter(w io.Writer) *Writer
 The package is currently (April 3, 2021) work in progress:
 
 - Only the writer/compressor is implemented
-- Buffering is really inefficient
-- Memory leaks are everywhere  
 
 
 

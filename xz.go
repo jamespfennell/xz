@@ -1,6 +1,5 @@
 package xz
 
-import "C"
 import (
 	"fmt"
 	"github.com/jamespfennell/xz/lzma"
@@ -32,19 +31,17 @@ func NewWriter(w io.Writer) *Writer {
 
 func NewWriterLevel(w io.Writer, level int) *Writer {
 	if level < BestSpeed {
-		fmt.Printf("xz library: unexpected negative compression level %d; using level 0", level)
+		fmt.Printf("xz library: unexpected negative compression level %d; using level 0\n", level)
 		level = BestSpeed
 	}
 	if level > BestCompression {
-		fmt.Printf("xz library: unexpected compression level %d bigger than 9; using level 9", level)
+		fmt.Printf("xz library: unexpected compression level %d bigger than 9; using level 9\n", level)
 		level = BestCompression
 	}
 	s := lzma.NewStream()
-	// TODO: leave a comment if there's an error
-	lzma.EasyEncoder(s, level)
-	// TODO: configurable? See what zstd and gzip do here
-	//  Just benchmark on some huge files and see what happens
-	s.SetOutputLen(500)
+	if ret := lzma.EasyEncoder(s, level); ret != lzma.Ok {
+		fmt.Printf("xz library: unexpected result from encoder initialization: %s\n", ret)
+	}
 	return &Writer{
 		lzmaStream: s,
 		w:          w,

@@ -14,6 +14,7 @@ package lzma
 
 /*
 #cgo LDFLAGS: -llzma
+#include <stdlib.h>
 #include "../xz/src/liblzma/api/lzma.h"
 
 // The lzma library requires that the stream be initialized to the value of the macro
@@ -23,7 +24,6 @@ lzma_stream new_stream() {
 	lzma_stream strm = LZMA_STREAM_INIT;
 	return strm;
 }
-
 */
 import "C"
 import (
@@ -95,15 +95,11 @@ const (
 type cBuffer struct {
 	start *C.uint8_t
 	len   C.size_t
-	// TODO: capacity?
 }
 
 func (buf *cBuffer) set(p []byte) {
 	// TODO: instead of allocating for each SetInput, allocate once and copy over?
-	// TODO: in all cases need to fix the memory leak here
-	//if stream.cStream.next_in != nil {
-	//	C.free(unsafe.Pointer(stream.cStream.next_in))
-	//}
+	buf.clear()
 	buf.start = (*C.uint8_t)(C.CBytes(p))
 	buf.len = C.size_t(len(p))
 }
@@ -111,6 +107,17 @@ func (buf *cBuffer) set(p []byte) {
 func (buf *cBuffer) read(length int) []byte {
 	return C.GoBytes(unsafe.Pointer(buf.start), C.int(length))
 }
+
+func (buf *cBuffer) clear() {
+	if buf.start != nil {
+		C.free(unsafe.Pointer(buf.start))
+	}
+	buf.start = nil
+	buf.len = 0
+}
+
+// This was chosen arbitrarily but seems to work fine in practice
+const outputBufferLength = 1024
 
 // Stream wraps lzma_stream in base.h and the input and output buffers that the lzma_stream type
 // requires to exist.
@@ -127,9 +134,15 @@ type Stream struct {
 
 // NewStream returns a new stream.
 func NewStream() *Stream {
-	return &Stream{
+	stream := Stream{
 		cStream: C.new_stream(),
 	}
+	// TODO: this is very memory inefficient!
+	p := make([]byte, outputBufferLength)
+	stream.output.set(p)
+	stream.cStream.next_out = stream.output.start
+	stream.cStream.avail_out = stream.output.len
+	return &stream
 }
 
 // AvailIn returns the number of bytes that have been placed in the input buffer using the SetInput
@@ -154,22 +167,12 @@ func (stream *Stream) TotalOut() int {
 	return int(stream.cStream.total_out)
 }
 
+// SetInput sets the input buffer of the stream to be the provided bytes. Note this overwrites
+// any data that is already in the input buffer.
 func (stream *Stream) SetInput(p []byte) {
-	// TODO: error if avail_in > 0
-	//  Or change to ExtendInput
 	stream.input.set(p)
 	stream.cStream.next_in = stream.input.start
 	stream.cStream.avail_in = stream.input.len
-}
-
-// SetOutputLen sets the length of the output buffer.
-func (stream *Stream) SetOutputLen(length int) {
-	// TODO: this is very memory inefficient!
-	// TODO: if the output buffer has data already, this needs to be copied over
-	p := make([]byte, length)
-	stream.output.set(p)
-	stream.cStream.next_out = stream.output.start
-	stream.cStream.avail_out = stream.output.len
 }
 
 // Output returns all bytes that have been written to the output buffer by the stream, and resets
@@ -183,13 +186,14 @@ func (stream *Stream) Output() []byte {
 
 // Close closes the stream and releases C memory that has been allocated by the type.
 func (stream *Stream) Close() {
-	// TODO: close the two buffers to free memory therein
+	stream.input.clear()
+	stream.output.clear()
 	C.lzma_end(&stream.cStream)
 }
 
 // EasyEncoder wraps lzma_easy_encoder in container.h.
 func EasyEncoder(stream *Stream, preset int) Return {
-	// TODO: support check?
+	// TODO: do integrity checking
 	return Return(C.lzma_easy_encoder(&stream.cStream, C.uint(preset), 0))
 }
 
