@@ -6,17 +6,15 @@ It works via a cgo wrapper around the C lzma2 library which is part of the
 
 To build the package the lzma C library needs to be installed:
 
-- MacOS: works out of the box.
-- Debian/Ubuntu: requires the apt package `liblzma-dev`.
+| OS | Requirements | Build status |
+|---|---|---|
+| MacOS | Works out of the box | [![MacOS build status](https://github.com/jamespfennell/xz/actions/workflows/macos.yml/badge.svg?branch=main)](https://github.com/jamespfennell/xz/actions?query=branch%3Amain+workflow%3AMacOS)
+| Debian/Ubuntu | Requires the apt package `liblzma-dev` | [![Debian build status](https://github.com/jamespfennell/xz/actions/workflows/debian.yml/badge.svg?branch=main)](https://github.com/jamespfennell/xz/actions?query=branch%3Amain+workflow%3ADebian)
 
 In the future we're hoping `go build` will also be able to compile the
 library to remove this dependency, though it's not 100% clear this is 
 possible.
 
-[![MacOS build status](https://github.com/jamespfennell/xz/actions/workflows/macos.yml/badge.svg?branch=main)
-](https://github.com/jamespfennell/xz/actions?query=branch%3Amain+workflow%3AMacOS)
-[![Debian build status](https://github.com/jamespfennell/xz/actions/workflows/debian.yml/badge.svg?branch=main)
-](https://github.com/jamespfennell/xz/actions?query=branch%3Amain+workflow%3ADebian)
  
 ## API
 
