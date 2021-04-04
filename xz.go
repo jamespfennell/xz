@@ -29,7 +29,7 @@ func (err LzmaError) Error() string {
 type Writer struct {
 	lzmaStream *lzma.Stream
 	w          io.Writer
-	// TODO: lastErr
+	lastErr    error
 }
 
 // NewWriter creates a Writer that compresses with the default compression level of DefaultCompression and writes the
@@ -66,58 +66,17 @@ func NewWriterLevel(w io.Writer, level int) *Writer {
 // written to the underlying io.Writer when the function returns.
 func (z *Writer) Write(p []byte) (int, error) {
 	z.lzmaStream.SetInput(p)
-	return z.consumeInput()
+	start := z.lzmaStream.TotalIn()
+	err := runLzma(z.lzmaStream, z.w, false)
+	return z.lzmaStream.TotalIn() - start, err
 }
 
 // Close finishes processing any input that has yet to be compressed, writes all remaining output to the underlying
 // io.Writer, and frees memory resources associated to the Writer.
 func (z *Writer) Close() error {
-	if _, err := z.consumeInput(); err != nil {
-		// TODO: this is a bug. We need to close resources in this case
-		return err
-	}
-	for {
-		if z.lzmaStream.AvailOut() == 0 {
-			if _, err := z.w.Write(z.lzmaStream.Output()); err != nil {
-				// TODO: this is a bug. We need to close resources in this case
-				return err
-			}
-		}
-		result := lzma.Code(z.lzmaStream, lzma.Finish)
-		if result == lzma.StreamEnd {
-			break
-		}
-		if result != lzma.Ok {
-			return LzmaError{result: result}
-		}
-	}
-	if _, err := z.w.Write(z.lzmaStream.Output()); err != nil {
-		// TODO: this is a bug. We need to close resources in this case
-		return err
-	}
+	err := runLzma(z.lzmaStream, z.w, true)
 	z.lzmaStream.Close()
-	return nil
-}
-
-func (z *Writer) consumeInput() (int, error) {
-	start := z.lzmaStream.TotalIn()
-	var err error
-	for {
-		if z.lzmaStream.AvailIn() == 0 {
-			break
-		}
-		if z.lzmaStream.AvailOut() == 0 {
-			if _, err = z.w.Write(z.lzmaStream.Output()); err != nil {
-				break
-			}
-		}
-		result := lzma.Code(z.lzmaStream, lzma.Run)
-		if result != lzma.Ok {
-			err = LzmaError{result: result}
-			break
-		}
-	}
-	return z.lzmaStream.TotalIn() - start, err
+	return err
 }
 
 // Reader is an io.ReadCloser that xz-decompresses from an underlying io.Reader.
@@ -176,43 +135,40 @@ func (z *Reader) populateBuffer(sizeHint int) error {
 	}
 	z.lzmaStream.SetInput(q[:m])
 
-	var outputs [][]byte
+	return runLzma(z.lzmaStream, &z.buf, z.inputFinished)
+}
+
+// Close released resources associated to this Reader.
+func (z *Reader) Close() error {
+	z.lzmaStream.Close()
+	return nil
+}
+
+func runLzma(lzmaStream *lzma.Stream, w io.Writer, finish bool) error {
 	action := lzma.Run
 	for {
 		// When decoding with lzma.Run, lzma requires the input buffer be non-empty. So if it is empty, either return
 		// or transition to lzma.Finish.
-		if action == lzma.Run && z.lzmaStream.AvailIn() == 0 {
-			if !z.inputFinished {
+		if action == lzma.Run && lzmaStream.AvailIn() == 0 {
+			if !finish {
 				break
 			}
 			action = lzma.Finish
 		}
-		result := lzma.Code(z.lzmaStream, action)
-		// The output buffer is not necessarily full, but because we're decompressing it often is so for simplicity
-		// just copy and clear it.
-		outputs = append(outputs, z.lzmaStream.Output())
-		if result == lzma.StreamEnd && action == lzma.Finish {
+		result := lzma.Code(lzmaStream, action)
+		// The output buffer is not necessarily full, but for simplicity we just copy and clear it.
+		// An alternative would be to remove the write here and replace it with the following 2 writes:
+		//   1. before lzma.Code if lzmaStream.AvailOut() == 0; i.e., clear the buffer if we're out of space.
+		//   2. before the function returns at the end, so the last output is captured.
+		if _, err := w.Write(lzmaStream.Output()); err != nil {
+			return err
+		}
+		if action == lzma.Finish && result == lzma.StreamEnd {
 			break
 		}
 		if result.IsErr() {
 			return LzmaError{result: result}
 		}
 	}
-
-	var totalNewLen int
-	for _, output := range outputs {
-		totalNewLen += len(output)
-	}
-	z.buf.Grow(totalNewLen)
-	for _, output := range outputs {
-		// the error on this Write is always nil
-		z.buf.Write(output)
-	}
-	return nil
-}
-
-// Close released resources associated to this Reader.
-func (z *Reader) Close() error {
-	z.lzmaStream.Close()
 	return nil
 }
