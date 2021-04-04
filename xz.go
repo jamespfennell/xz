@@ -1,3 +1,4 @@
+// Package xz implements xz compression and decompression.
 package xz
 
 import (
@@ -13,25 +14,33 @@ const (
 	DefaultCompression = 6
 )
 
-// TODO: docs on all these
+// LzmaError may be returned if the underlying lzma library returns an error code during compression or decompression.
+// Receiving this error indicates a bug in the xz package, and a bug report would be appreciated.
 type LzmaError struct {
 	result lzma.Return
 }
 
 func (err LzmaError) Error() string {
-	return fmt.Sprintf("lzma library returned a %s error", err.result)
+	return fmt.Sprintf(
+		"lzma library returned a %s error. This indicates a bug in the Go xz package", err.result)
 }
 
+// Writer is an io.WriteCloser that xz-compresses its input and writes it to an underlying io.Writer
 type Writer struct {
 	lzmaStream *lzma.Stream
 	w          io.Writer
 	// TODO: lastErr
 }
 
+// NewWriter creates a Writer that compresses with the default compression level of DefaultCompression and writes the
+// output to w.
 func NewWriter(w io.Writer) *Writer {
 	return NewWriterLevel(w, DefaultCompression)
 }
 
+// NewWriterLevel creates a Writer that compresses with the prescribed compression level and writes the output to w.
+// The level should be between BestSpeed and BestCompression inclusive; if it isn't, the level will be rounded up
+// or down accordingly.
 func NewWriterLevel(w io.Writer, level int) *Writer {
 	if level < BestSpeed {
 		fmt.Printf("xz library: unexpected negative compression level %d; using level 0\n", level)
@@ -51,11 +60,17 @@ func NewWriterLevel(w io.Writer, level int) *Writer {
 	}
 }
 
+// Write accepts p for compression.
+//
+// Because of internal buffering and the mechanics of xz, the compressed version of p is not guaranteed to have been
+// written to the underlying io.Writer when the function returns.
 func (z *Writer) Write(p []byte) (int, error) {
 	z.lzmaStream.SetInput(p)
 	return z.consumeInput()
 }
 
+// Close finishes processing any input that has yet to be compressed, writes all remaining output to the underlying
+// io.Writer, and frees memory resources associated to the Writer.
 func (z *Writer) Close() error {
 	if _, err := z.consumeInput(); err != nil {
 		return err
@@ -102,14 +117,16 @@ func (z *Writer) consumeInput() (int, error) {
 	return z.lzmaStream.TotalIn() - start, err
 }
 
+// Reader is an io.ReadCloser that xz-decompresses from an underlying io.Reader.
 type Reader struct {
 	lzmaStream    *lzma.Stream
 	r             io.Reader
 	buf           bytes.Buffer
 	inputFinished bool
-	// TODO: lastErr, which may be io.EOF
+	lastErr       error
 }
 
+// NewReader creates a new Reader that reads compressed input from r.
 func NewReader(r io.Reader) *Reader {
 	s := lzma.NewStream()
 	if ret := lzma.StreamDecoder(s); ret != lzma.Ok {
@@ -121,17 +138,24 @@ func NewReader(r io.Reader) *Reader {
 	}
 }
 
+// Read decompresses output from the underlying io.Reader and returns up to len(p) uncompressed bytes.
 func (z *Reader) Read(p []byte) (int, error) {
 	if len(p) == 0 {
 		return 0, nil
 	}
+	if z.lastErr != nil {
+		return 0, z.lastErr
+	}
 	if z.buf.Len() < len(p) {
-		// We have no idea how much data to request, so just cargo cult from the caller...
-		if err := z.populateBuffer(len(p)); err != nil {
-			return 0, err
+		// We have no idea how much data to request from the underlying io.Reader, so just cargo cult from the caller...
+		z.lastErr = z.populateBuffer(len(p))
+		if z.lastErr != nil {
+			return 0, z.lastErr
 		}
 	}
-	return z.buf.Read(p)
+	var n int
+	n, z.lastErr = z.buf.Read(p)
+	return n, z.lastErr
 }
 
 func (z *Reader) populateBuffer(sizeHint int) error {
@@ -150,32 +174,23 @@ func (z *Reader) populateBuffer(sizeHint int) error {
 	z.lzmaStream.SetInput(q[:m])
 
 	var outputs [][]byte
+	action := lzma.Run
 	for {
-		if z.lzmaStream.AvailIn() == 0 {
+		// When decoding, lzma requires the input buffer be non-empty
+		if z.lzmaStream.AvailIn() == 0 && action == lzma.Run {
 			outputs = append(outputs, z.lzmaStream.Output())
 			break
 		}
 		if z.lzmaStream.AvailOut() == 0 {
 			outputs = append(outputs, z.lzmaStream.Output())
 		}
-		result := lzma.Code(z.lzmaStream, lzma.Run)
-		if result != lzma.Ok && result != lzma.StreamEnd {
+		result := lzma.Code(z.lzmaStream, action)
+		if result == lzma.StreamEnd {
+			if action == lzma.Run && z.inputFinished {
+				action = lzma.Finish
+			}
+		} else if result != lzma.Ok {
 			return LzmaError{result: result}
-		}
-	}
-
-	if z.inputFinished {
-		for {
-			if z.lzmaStream.AvailOut() == 0 {
-				outputs = append(outputs, z.lzmaStream.Output())
-			}
-			result := lzma.Code(z.lzmaStream, lzma.Finish)
-			if result == lzma.StreamEnd {
-				break
-			}
-			if result != lzma.Ok {
-				return LzmaError{result: result}
-			}
 		}
 	}
 
@@ -191,6 +206,7 @@ func (z *Reader) populateBuffer(sizeHint int) error {
 	return nil
 }
 
+// Close released resources associated to this Reader.
 func (z *Reader) Close() error {
 	z.lzmaStream.Close()
 	return nil
