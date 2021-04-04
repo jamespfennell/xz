@@ -15,7 +15,7 @@ package lzma
 /*
 #cgo LDFLAGS: -llzma
 #include <stdlib.h>
-#include "../xz/src/liblzma/api/lzma.h"
+#include "upstream/src/liblzma/api/lzma.h"
 
 // The lzma library requires that the stream be initialized to the value of the macro
 // LZMA_STREAM_INIT. Because this is a macro it has no type. This function exists to cast the
