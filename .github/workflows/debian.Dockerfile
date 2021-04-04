@@ -11,8 +11,8 @@ WORKDIR /xz
 # into the Go package.
 RUN apt-get update && apt-get install xz-utils liblzma-dev
 
-COPY go.mod ./
-COPY . ./
+COPY ../../go.mod ./
+COPY ../.. ./
 
 RUN go test ./...
 RUN go build cmd/goxz.go
@@ -22,3 +22,8 @@ FROM buildpack-deps:buster-curl
 COPY --from=builder /xz/goxz /usr/bin
 
 ENTRYPOINT ["goxz"]
+
+# TODO:
+#  - CentOS
+#  - MacOS
+#  - Alpine

@@ -81,6 +81,10 @@ func (r Return) String() string {
 	return "UNKNOWN_RESULT"
 }
 
+func (r Return) IsErr() bool {
+	return r != Ok && r != StreamEnd
+}
+
 // Action corresponds to the lzma_action type in base.h.
 type Action int
 
@@ -91,6 +95,22 @@ const (
 	Finish             = 3
 	FullBarrier        = 4
 )
+
+func (a Action) String() string {
+	switch a {
+	case Run:
+		return "RUN"
+	case SyncFlush:
+		return "SYNC_FLUSH"
+	case FullFlush:
+		return "FULL_FLUSH"
+	case Finish:
+		return "FINISH"
+	case FullBarrier:
+		return "FULL_BARRIER"
+	}
+	return "UNKNOWN_ACTION"
+}
 
 type cBuffer struct {
 	start *C.uint8_t

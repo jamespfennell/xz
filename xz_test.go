@@ -52,6 +52,8 @@ func TestWriterReaderRoundTrip(t *testing.T) {
 		reconstructedInput, err := io.ReadAll(r)
 		nilErrOrFail(t, err, "reading from xz reader")
 		expectBytesEqual(t, reconstructedInput, tc.input)
+
+		//t.Errorf("Fake error")
 	})
 }
 

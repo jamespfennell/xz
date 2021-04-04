@@ -73,11 +73,13 @@ func (z *Writer) Write(p []byte) (int, error) {
 // io.Writer, and frees memory resources associated to the Writer.
 func (z *Writer) Close() error {
 	if _, err := z.consumeInput(); err != nil {
+		// TODO: this is a bug. We need to close resources in this case
 		return err
 	}
 	for {
 		if z.lzmaStream.AvailOut() == 0 {
 			if _, err := z.w.Write(z.lzmaStream.Output()); err != nil {
+				// TODO: this is a bug. We need to close resources in this case
 				return err
 			}
 		}
@@ -90,6 +92,7 @@ func (z *Writer) Close() error {
 		}
 	}
 	if _, err := z.w.Write(z.lzmaStream.Output()); err != nil {
+		// TODO: this is a bug. We need to close resources in this case
 		return err
 	}
 	z.lzmaStream.Close()
@@ -176,20 +179,22 @@ func (z *Reader) populateBuffer(sizeHint int) error {
 	var outputs [][]byte
 	action := lzma.Run
 	for {
-		// When decoding, lzma requires the input buffer be non-empty
-		if z.lzmaStream.AvailIn() == 0 && action == lzma.Run {
-			outputs = append(outputs, z.lzmaStream.Output())
-			break
-		}
-		if z.lzmaStream.AvailOut() == 0 {
-			outputs = append(outputs, z.lzmaStream.Output())
+		// When decoding with lzma.Run, lzma requires the input buffer be non-empty. So if it is empty, either return
+		// or transition to lzma.Finish.
+		if action == lzma.Run && z.lzmaStream.AvailIn() == 0 {
+			if !z.inputFinished {
+				break
+			}
+			action = lzma.Finish
 		}
 		result := lzma.Code(z.lzmaStream, action)
-		if result == lzma.StreamEnd {
-			if action == lzma.Run && z.inputFinished {
-				action = lzma.Finish
-			}
-		} else if result != lzma.Ok {
+		// The output buffer is not necessarily full, but because we're decompressing it often is so for simplicity
+		// just copy and clear it.
+		outputs = append(outputs, z.lzmaStream.Output())
+		if result == lzma.StreamEnd && action == lzma.Finish {
+			break
+		}
+		if result.IsErr() {
 			return LzmaError{result: result}
 		}
 	}

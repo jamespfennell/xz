@@ -4,12 +4,20 @@ This is a Go package for compressing and decompressing data in the xz format.
 It works via a cgo wrapper around the C lzma2 library which is part of the 
 [XZ Utils project](https://tukaani.org/xz/).
 
-To build the package the lzma C library needs to be installed, which
-on Debian means installing the apt package `liblzma-dev`.
+To build the package the lzma C library needs to be installed:
+
+- MacOS: works out of the box.
+- Debian/Ubuntu: requires the apt package `liblzma-dev`.
+
 In the future we're hoping `go build` will also be able to compile the
 library to remove this dependency, though it's not 100% clear this is 
 possible.
 
+[![MacOS build status](https://github.com/jamespfennell/xz/actions/workflows/macos.yml/badge.svg?branch=main)
+](https://github.com/jamespfennell/xz/actions?query=branch%3Amain+workflow%3AMacOS)
+[![Debian build status](https://github.com/jamespfennell/xz/actions/workflows/debian.yml/badge.svg?branch=main)
+](https://github.com/jamespfennell/xz/actions?query=branch%3Amain+workflow%3ADebian)
+ 
 ## API
 
 The API follows the standard Go API for compression packages.
