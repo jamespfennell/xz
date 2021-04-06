@@ -12,6 +12,12 @@ import (
 //go:embed alice_in_wonderland.txt
 var aliceInWonderland []byte
 
+//go:embed README.md
+var readme []byte
+
+//go:embed xz.go
+var xzDotGo []byte
+
 const smallString = "my string to compress"
 
 type testCase struct {
@@ -23,6 +29,8 @@ func runOverAllTestCases(t *testing.T, fn func(*testing.T, testCase)) {
 	strings := [][]byte{
 		[]byte(smallString),
 		aliceInWonderland,
+		readme,
+		xzDotGo,
 	}
 	for _, input := range strings {
 		for compression := BestSpeed; compression <= BestCompression; compression++ {

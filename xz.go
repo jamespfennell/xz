@@ -21,6 +21,7 @@ type LzmaError struct {
 }
 
 func (err LzmaError) Error() string {
+	// TODO: FORMAT_ERROR can indicate a corrupted reader
 	return fmt.Sprintf(
 		"lzma library returned a %s error. This indicates a bug in the Go xz package", err.result)
 }
@@ -88,7 +89,7 @@ type Reader struct {
 	lastErr       error
 }
 
-// NewReader creates a new Reader that reads compressed input from r.
+// NewReader creates a new Reader that reads xz-compressed input from r and returns uncompressed output.
 func NewReader(r io.Reader) *Reader {
 	s := lzma.NewStream()
 	if ret := lzma.StreamDecoder(s); ret != lzma.Ok {
