@@ -67,14 +67,14 @@ func NewWriterLevel(w io.Writer, level int) *Writer {
 func (z *Writer) Write(p []byte) (int, error) {
 	z.lzmaStream.SetInput(p)
 	start := z.lzmaStream.TotalIn()
-	err := runLzma(z.lzmaStream, z.w, false)
+	err := runLzma(z.lzmaStream, z.w, lzma.Run)
 	return z.lzmaStream.TotalIn() - start, err
 }
 
 // Close finishes processing any input that has yet to be compressed, writes all remaining output to the underlying
 // io.Writer, and frees memory resources associated to the Writer.
 func (z *Writer) Close() error {
-	err := runLzma(z.lzmaStream, z.w, true)
+	err := runLzma(z.lzmaStream, z.w, lzma.Finish)
 	z.lzmaStream.Close()
 	return err
 }
@@ -115,8 +115,10 @@ func (z *Reader) Read(p []byte) (int, error) {
 			return 0, z.lastErr
 		}
 	}
-	var n int
-	n, z.lastErr = z.buf.Read(p)
+	n, bufErr := z.buf.Read(p)
+	if bufErr == io.EOF && z.inputFinished {
+		z.lastErr = io.EOF
+	}
 	return n, z.lastErr
 }
 
@@ -130,12 +132,14 @@ func (z *Reader) populateBuffer(sizeHint int) error {
 	if err != nil && err != io.EOF {
 		return err
 	}
+	lzmaAction := lzma.Run
 	if err == io.EOF {
 		z.inputFinished = true
+		lzmaAction = lzma.Finish
 	}
 	z.lzmaStream.SetInput(q[:m])
 
-	return runLzma(z.lzmaStream, &z.buf, z.inputFinished)
+	return runLzma(z.lzmaStream, &z.buf, lzmaAction)
 }
 
 // Close released resources associated to this Reader.
@@ -144,16 +148,13 @@ func (z *Reader) Close() error {
 	return nil
 }
 
-func runLzma(lzmaStream *lzma.Stream, w io.Writer, finish bool) error {
-	action := lzma.Run
+// runLzma runs lzma.Code repeatedly until the necessary end condition is met. Only the lzma.Run and lzma.Finish actions
+// are supported.
+func runLzma(lzmaStream *lzma.Stream, w io.Writer, action lzma.Action) error {
 	for {
-		// When decoding with lzma.Run, lzma requires the input buffer be non-empty. So if it is empty, either return
-		// or transition to lzma.Finish.
+		// When decoding with lzma.Run, lzma requires the input buffer be non-empty. So if it is empty, return.
 		if action == lzma.Run && lzmaStream.AvailIn() == 0 {
-			if !finish {
-				break
-			}
-			action = lzma.Finish
+			break
 		}
 		result := lzma.Code(lzmaStream, action)
 		// The output buffer is not necessarily full, but for simplicity we just copy and clear it.

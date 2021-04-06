@@ -55,6 +55,40 @@ func TestWriterReaderRoundTrip(t *testing.T) {
 	})
 }
 
+func TestMisbehavingReaders(t *testing.T) {
+	for i, newReader := range []func(io.Reader) io.Reader{
+		func(r io.Reader) io.Reader {
+			return &reluctantReader{
+				reluctance: 5,
+				r:          r,
+			}
+		},
+		func(r io.Reader) io.Reader {
+			return &slowReader{
+				r: r,
+			}
+		},
+		func(r io.Reader) io.Reader {
+			return &drawnOutReader{
+				r: r,
+			}
+		},
+	} {
+		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
+			var output bytes.Buffer
+			w := NewWriter(&output)
+			_, err := io.Copy(w, bytes.NewReader(aliceInWonderland))
+			nilErrOrFail(t, err, "writing to the xz writer")
+			nilErrOrFail(t, w.Close(), "closing the xz writer")
+
+			r := NewReader(newReader(&output))
+			reconstructedInput, err := io.ReadAll(r)
+			nilErrOrFail(t, err, "reading from xz reader")
+			expectBytesEqual(t, reconstructedInput, aliceInWonderland)
+		})
+	}
+}
+
 func TestWriterAgreesWithShellCmd(t *testing.T) {
 	runOverAllTestCases(t, func(t *testing.T, tc testCase) {
 		var output bytes.Buffer
@@ -119,4 +153,85 @@ func expectBytesEqual(t *testing.T, a, b []byte) {
 			t.Errorf("Byte array differs at index %d: %d != %d", i, a[i], b[i])
 		}
 	}
+}
+
+// reluctantReader returns input from an underlying io.Reader once every reluctance reads. Other times,
+// it returns 0, nil
+type reluctantReader struct {
+	reluctance int
+	r          io.Reader
+
+	// Implementation details
+	pos int
+}
+
+func (z *reluctantReader) Read(p []byte) (int, error) {
+	defer func() {
+		// We only count non-trivial reads for reluctance purposes. Otherwise, if the consumer is also being conniving
+		// and only issuing non-trivial reads every n reads we may get an infinite loop. Put another way, this
+		// condition guarantees we'll make some progress every reluctance read.
+		if len(p) > 0 {
+			z.pos++
+		}
+	}()
+	if z.pos == z.reluctance {
+		z.pos = -1
+		return z.r.Read(p)
+	}
+	return 0, nil
+}
+
+// slowReader returns a single byte of input from an underlying io.Reader on every Read.
+type slowReader struct {
+	r io.Reader
+
+	// Implementation details
+	buf     []byte
+	lastErr error
+}
+
+func (z *slowReader) Read(p []byte) (int, error) {
+	if len(p) == 0 {
+		return 0, nil
+	}
+	for {
+		if len(z.buf) > 0 {
+			p[0] = z.buf[0]
+			z.buf = z.buf[1:]
+			return 1, nil
+		}
+		if z.lastErr != nil {
+			return 0, z.lastErr
+		}
+		z.buf = make([]byte, len(p))
+		var n int
+		n, z.lastErr = z.r.Read(z.buf)
+		if n == 0 && z.lastErr == nil {
+			return 0, nil
+		}
+		z.buf = z.buf[:n]
+	}
+}
+
+// drawnOutReader follows the non-recommended approach for marking io.EOF: it first returns the last bytes with
+// a nil error, and on the next read returns 0, io.EOF.
+type drawnOutReader struct {
+	r io.Reader
+
+	// Implementation details
+	lastErr error
+}
+
+func (z *drawnOutReader) Read(p []byte) (int, error) {
+	if z.lastErr != nil {
+		return 0, z.lastErr
+	}
+	n, err := z.r.Read(p)
+	if err != nil {
+		z.lastErr = err
+	}
+	if err == io.EOF {
+		err = nil
+	}
+	return n, err
 }
