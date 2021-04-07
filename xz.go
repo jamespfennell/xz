@@ -109,38 +109,32 @@ func (z *Reader) Read(p []byte) (int, error) {
 	if z.lastErr != nil {
 		return 0, z.lastErr
 	}
-	if z.buf.Len() < len(p) {
-		// We have no idea how much data to request from the underlying io.Reader, so just cargo cult from the caller...
-		z.lastErr = z.populateBuffer(len(p))
+	// As long as there is potentially more input to read and the buffer is not big enough to fully fill p, we try
+	// to extend the buffer
+	for !z.inputFinished && z.buf.Len() < len(p) {
+		// The io.Reader interface explicitly allows us to use the provided byte slice as scratch space
+		m, err := z.r.Read(p)
+		if err != nil && err != io.EOF {
+			z.lastErr = err
+			return 0, z.lastErr
+		}
+		z.lzmaStream.SetInput(p[:m])
+		lzmaAction := lzma.Run
+		if err == io.EOF {
+			z.inputFinished = true
+			lzmaAction = lzma.Finish
+		}
+		z.lastErr = runLzma(z.lzmaStream, &z.buf, lzmaAction)
 		if z.lastErr != nil {
 			return 0, z.lastErr
 		}
 	}
+	// bufErr will either be nil or io.EOF
 	n, bufErr := z.buf.Read(p)
 	if bufErr == io.EOF && z.inputFinished {
 		z.lastErr = io.EOF
 	}
 	return n, z.lastErr
-}
-
-func (z *Reader) populateBuffer(sizeHint int) error {
-	if z.inputFinished {
-		return nil
-	}
-
-	q := make([]byte, sizeHint)
-	m, err := z.r.Read(q)
-	if err != nil && err != io.EOF {
-		return err
-	}
-	lzmaAction := lzma.Run
-	if err == io.EOF {
-		z.inputFinished = true
-		lzmaAction = lzma.Finish
-	}
-	z.lzmaStream.SetInput(q[:m])
-
-	return runLzma(z.lzmaStream, &z.buf, lzmaAction)
 }
 
 // Close released resources associated to this Reader.
