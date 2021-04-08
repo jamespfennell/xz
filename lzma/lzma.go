@@ -13,9 +13,31 @@
 package lzma
 
 /*
-#cgo LDFLAGS: -llzma
+// TODO: can I have a flag that links versus compiles?
+// #cgo LDFLAGS: -llzma
+// #cgo CFLAGS: -DGOXZ_SKIP_C_COMPILATION=1
+#cgo CFLAGS: -Iupstream/src/common
+#cgo CFLAGS: -Iupstream/src/liblzma/api
+#cgo CFLAGS: -Iupstream/src/liblzma/common
+#cgo CFLAGS: -Iupstream/src/liblzma/check
+#cgo CFLAGS: -Iupstream/src/liblzma/delta
+#cgo CFLAGS: -Iupstream/src/liblzma/lz
+#cgo CFLAGS: -Iupstream/src/liblzma/lzma
+#cgo CFLAGS: -Iupstream/src/liblzma/rangecoder
+#cgo CFLAGS: -Iupstream/src/liblzma/simple
+
+#cgo CFLAGS: -DHAVE_ENCODER_LZMA2 -DHAVE_DECODER_LZMA2
+// TODO: the CRC32 flag is needed, figure out why
+#cgo CFLAGS: -DHAVE_CHECK_CRC32
+// -DHAVE_CHECK_CRC64
+// -DHAVE_CHECK_SHA256
+// TODO: which of these MF flags are actually needed? And what are they for?
+#cgo CFLAGS: -DHAVE_MF_BT2 -DHAVE_MF_BT3  -DHAVE_MF_HC3  -DHAVE_MF_HC4 -DHAVE_MF_BT4
+#cgo CFLAGS: -DHAVE_STDBOOL_H -DSIZEOF_SIZE_T=8 -DHAVE_STDINT_H -DHAVE_INTTYPES_H
+
 #include <stdlib.h>
-#include "upstream/src/liblzma/api/lzma.h"
+
+#include "lzma.h"
 
 // The lzma library requires that the stream be initialized to the value of the macro
 // LZMA_STREAM_INIT. Because this is a macro it has no type. This function exists to cast the

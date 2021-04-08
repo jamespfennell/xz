@@ -1,0 +1,11 @@
+language: go
+
+go:
+  - "1.16"
+arch:
+  - arm64
+script:
+  - which xz
+  - xz --version
+  - go build cmd/goxz.go
+  - go test ./...

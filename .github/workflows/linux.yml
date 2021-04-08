@@ -1,8 +1,8 @@
-name: MacOS x86
+name: Linux x86
 on: [push, pull_request]
 jobs:
-  MacOS:
-    runs-on: macos-latest
+  Linux:
+    runs-on: ubuntu-latest
     steps:
       - name: Install Go
         uses: actions/setup-go@v2

@@ -1,8 +1,8 @@
-name: MacOS x86
+name: Windows x86
 on: [push, pull_request]
 jobs:
-  MacOS:
-    runs-on: macos-latest
+  Windows:
+    runs-on: windows-2019
     steps:
       - name: Install Go
         uses: actions/setup-go@v2

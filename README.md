@@ -4,18 +4,16 @@ This is a Go package for compressing and decompressing data in the xz format.
 It works via a cgo wrapper around the C lzma2 library which is part of the 
 [XZ Utils project](https://tukaani.org/xz/).
 
-To build the package the lzma C library needs to be installed:
+The underlying C library is cross-platform.
+As part of the CI, the Go package is built and tested for the following operating systems and (64-bit) CPUs:
 
-| OS | Requirements | Build status |
+| OS | Architecture | Build status |
 |---|---|---|
-| MacOS | Works out of the box | [![MacOS build status](https://github.com/jamespfennell/xz/actions/workflows/macos.yml/badge.svg?branch=main)](https://github.com/jamespfennell/xz/actions?query=branch%3Amain+workflow%3AMacOS)
-| Debian/Ubuntu | Requires the apt package `liblzma-dev` | [![Debian build status](https://github.com/jamespfennell/xz/actions/workflows/debian.yml/badge.svg?branch=main)](https://github.com/jamespfennell/xz/actions?query=branch%3Amain+workflow%3ADebian)
+| Linux   | x86 | [![Linux x86 build status](https://github.com/jamespfennell/xz/actions/workflows/linux.yml/badge.svg?branch=main)](https://github.com/jamespfennell/xz/actions/workflows/linux.yml?query=branch%3Amain)
+| Linux   | arm | [![Linux ARM build status](https://travis-ci.com/jamespfennell/xz.svg?branch=main)](https://travis-ci.com/github/jamespfennell/xz)
+| MacOS   | x86 | [![MacOS build status](https://github.com/jamespfennell/xz/actions/workflows/macos.yml/badge.svg?branch=main)](https://github.com/jamespfennell/xz/actions/workflows/macos.yml?query=branch%3Amain)
+| Windows | x86 | [![Windows build status](https://github.com/jamespfennell/xz/actions/workflows/windows.yml/badge.svg?branch=main)](https://github.com/jamespfennell/xz/actions/workflows/windows.yml?query=branch%3Amain)
 
-In the future we're hoping `go build` will also be able to compile the
-library to remove this dependency, though it's not 100% clear this is 
-possible.
-
- 
 ## API
 
 The API follows the standard Go API for compression packages.
