@@ -1,7 +1,26 @@
 name: MacOS x86
 on: [push, pull_request]
 jobs:
-  MacOS:
+  FullCompile:
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        cCompiler: [ "clang", "gcc" ]
+    steps:
+      - name: Install Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.16.x
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Retrieve submodule
+        run: git submodule update --init
+      - name: Build
+        run: CC=${{ matrix.cCompiler }} go build cmd/goxz.go
+      - name: Test
+        run: CC=${{ matrix.cCompiler }} go test ./...
+
+  PrecompiledLZMA:
     runs-on: macos-latest
     steps:
       - name: Install Go
@@ -13,6 +32,6 @@ jobs:
       - name: Retrieve submodule
         run: git submodule update --init
       - name: Build
-        run: go build cmd/goxz.go
+        run: CGO_CFLAGS=-DGOXZ_SKIP_C_COMPILATION CGO_LDFLAGS=-llzma go build cmd/goxz.go
       - name: Test
-        run: go test ./...
+        run: CGO_CFLAGS=-DGOXZ_SKIP_C_COMPILATION CGO_LDFLAGS=-llzma go test ./...

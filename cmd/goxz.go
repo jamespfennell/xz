@@ -94,8 +94,7 @@ func newParamsFromArgs(args []string) (p params, err error) {
 		set.BoolVar(&p.ForceOutputFileWrite, alias, false, "")
 	}
 	set.Usage = func() {
-		// TODO: os.Stderr should be something else...?
-		_, _ = fmt.Fprint(os.Stderr, usage, "\n")
+		_, _ = fmt.Fprint(set.Output(), usage, "\n")
 	}
 	// In case of an error os.Exit will be called by the flag package, per the flag.ExitOnError setting above
 	// TODO: reconsider

@@ -4,8 +4,11 @@ go:
   - "1.16"
 arch:
   - arm64
+
 script:
   - which xz
   - xz --version
-  - go build cmd/goxz.go
-  - go test ./...
+  - CC=gcc go build cmd/goxz.go
+  - CC=gcc go test ./...
+  - CC=clang go build -a cmd/goxz.go
+  - CC=clang go test ./... -count=1
