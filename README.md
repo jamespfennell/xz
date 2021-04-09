@@ -32,7 +32,9 @@ func NewReader(r io.Reader) *Reader
 
 ## Build information
 
-The underlying lzma2 C library is cross-platform, and by default it is compiled during `go build`.
+The lzma2 C code is automatically compiled by `go build`.
+The C code is highly portable and regularly compiled for numerous architectures as part of the XZ Utils project,
+    so it's unlikely `go build` will encounter any issues.
 As part of the CI, the package is built and tested in the following environments:
 
 | OS | Architecture | C compiler | Build status |
@@ -41,9 +43,6 @@ As part of the CI, the package is built and tested in the following environments
 | Linux   | arm | Clang, GCC | [![Linux ARM build status](https://travis-ci.com/jamespfennell/xz.svg?branch=main)](https://travis-ci.com/github/jamespfennell/xz)
 | MacOS   | x86 | Clang, GCC | [![MacOS build status](https://github.com/jamespfennell/xz/actions/workflows/macos.yml/badge.svg?branch=main)](https://github.com/jamespfennell/xz/actions/workflows/macos.yml?query=branch%3Amain)
 | Windows | x86 | GCC | [![Windows build status](https://github.com/jamespfennell/xz/actions/workflows/windows.yml/badge.svg?branch=main)](https://github.com/jamespfennell/xz/actions/workflows/windows.yml?query=branch%3Amain)
-
-Given the wide distribution of the XZ Utils software, and the high quality of the C code,
-    we suspect `go build` will work out of the box on any 64-bit platform.
 
 As an alternative to compiling the C files during `go build`, the package can statically link to a precompiled
 lzma library if it is already present on the system.
@@ -57,13 +56,14 @@ The CI builds and tests the package using this static linking approach for both 
 
 ## The lzma sub-package
 
-This section is targeted at people who want to use features of the C lzma library that are not exposed
-    through the xz package API described above.
+This section is targeted at people who want to use features of the C lzma2 library that are not currently exposed
+    through the xz package.
+We're open to pull requests that add new lzma2 features to the package.
 
-The lzma C library is wrapped using cgo in the lzma Go sub-package.
+The lzma2 C library is wrapped using cgo in the lzma Go sub-package.
 This sub-package is pretty "low level" and mostly just maps Go function calls/data structures directly to
     C function calls/data structures.
-One of the consequences of this is that it does not have an idiomatic Go API. 
+One consequence of this is that the sub-package does not have an idiomatic Go API. 
 For example, instead of returning error types it returns integer statuses, as the C code does.
 The main xz package wraps the sub-package and provides the idiomatic Go API.
 
@@ -72,12 +72,12 @@ them.
 For this kind of project, this usually necessitates copying files from the upstream project into the directory.
 The approach here is a little different: 
     for each C source file needed to compile the package,
-    we add a tiny C shim file in the lzma directory that includes the source file using an `#include` directive.
+    we add a C shim file in the lzma directory that includes the source file using an `#include` directive.
 There are two benefits to this.
 First, by wrapping each `#include` in an `#ifndef GOXZ_SKIP_C_COMPILATION` conditional we can 
     use the `CGO_CFLAGS` environment variable to essentially skip C compilation entirely.
 (The shim file will evaluate to an empty source file.)
-This enables users to build the package by statically linking to a prebuilt system lzma library instead
+This enables users to build the package by statically linking to a prebuilt system lzma2 library instead
     of compiling the library from scratch.
 Second, it means that non-trivial source files are not duplicated in source control.
 This is one of those things that's not really important but "feels good".
@@ -89,19 +89,19 @@ The shim files are generated automatically using the vendorize script:
 The script does not include every C file in the lzma2 library.
 This is because the xz package does not use every lzma2 feature, and we can skip compiling features we don't need.
 Doing so cuts the compilation time about in half.
-The catch is that some features of the lzma library
+The catch is that some features of the lzma2 library
     (like CRC64 checking) won't work unless additional source files are vendored in.
 In this case you can just pass the `--all` flag to the script and every possible C file will be included.
 
 ## The goxz command
 
 The cmd subdirectory contains an example command line tool `goxz` built on top of the xz package.
-It only exposes limited features of the lzma library; the standard `xz` command from XZ-Utils is
+It only exposes limited features of the lzma2 library; the standard `xz` command from XZ-Utils is
 much richer.
 
 ## Thanks
 
-The C lzma library was written by Lasse Collin.
+The lzma2 C library was written by Lasse Collin.
 The documentation for this library is really excellent, which made this package so much easier to write.
 
 ## License

@@ -13,9 +13,6 @@
 package lzma
 
 /*
-// TODO: can I have a flag that links versus compiles? If not, should remove the include ifdefs in the vendorized files
-// #cgo LDFLAGS: -llzma
-// #cgo CFLAGS: -DGOXZ_SKIP_C_COMPILATION=1
 #cgo CFLAGS: -Iupstream/src/common
 #cgo CFLAGS: -Iupstream/src/liblzma/api
 #cgo CFLAGS: -Iupstream/src/liblzma/common
@@ -28,12 +25,13 @@ package lzma
 
 #cgo CFLAGS: -DHAVE_ENCODER_LZMA2 -DHAVE_DECODER_LZMA2
 // TODO: the CRC32 flag is needed, figure out why
+//  At the same time, we want to figure out if checking should be done always
 #cgo CFLAGS: -DHAVE_CHECK_CRC32
 // -DHAVE_CHECK_CRC64
 // -DHAVE_CHECK_SHA256
 // TODO: which of these MF flags are actually needed? And what are they for?
 #cgo CFLAGS: -DHAVE_MF_BT2 -DHAVE_MF_BT3  -DHAVE_MF_HC3  -DHAVE_MF_HC4 -DHAVE_MF_BT4
-// TODO: can we not hard code SIZEOF_SIZE_T?
+// TODO: can we not hard code SIZEOF_SIZE_T? Do we need all of these flags? Let's find out
 #cgo CFLAGS: -DHAVE_STDBOOL_H -DSIZEOF_SIZE_T=8 -DHAVE_STDINT_H -DHAVE_INTTYPES_H
 
 #include <stdlib.h>
@@ -141,7 +139,7 @@ type cBuffer struct {
 }
 
 func (buf *cBuffer) set(p []byte) {
-	// TODO: instead of allocating for each SetInput, allocate once and copy over?
+	// TODO: instead of allocating for each SetInput, allocate once and copy over
 	buf.clear()
 	buf.start = (*C.uint8_t)(C.CBytes(p))
 	buf.len = C.size_t(len(p))
@@ -180,7 +178,7 @@ func NewStream() *Stream {
 	stream := Stream{
 		cStream: C.new_stream(),
 	}
-	// TODO: this is very memory inefficient!
+	// This is memory inefficient but not a big deal because it's a once off and only 1kb of memory.
 	p := make([]byte, outputBufferLength)
 	stream.output.set(p)
 	stream.cStream.next_out = stream.output.start

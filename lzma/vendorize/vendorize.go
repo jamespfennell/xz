@@ -113,7 +113,9 @@ func main() {
 	removeVendorizedCFiles()
 	for _, file := range files {
 		fmt.Println("Vendorizing", file)
-		// TODO: validate that the file is in the public domain?
+		// TODO: validate that the file is in the public domain
+		//  This doesn't cover header files but is probably good enough.
+		//  Maybe we can transitively find header files that are included and audit them all
 		if err := vendorizeCFile(file, gitHash); err != nil {
 			fmt.Printf("Failed to vendorize C file %s: %s", file, err)
 			os.Exit(1)

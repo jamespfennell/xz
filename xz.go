@@ -21,9 +21,10 @@ type LzmaError struct {
 }
 
 func (err LzmaError) Error() string {
-	// TODO: FORMAT_ERROR can indicate a corrupted reader
+	// TODO: FORMAT_ERROR can indicate a corrupted reader; we should say this/
+	// TODO: we need to audit all possible errors and return appropriate text.
 	return fmt.Sprintf(
-		"lzma library returned a %s error. This indicates a bug in the Go xz package", err.result)
+		"lzma library returned a %s error", err.result)
 }
 
 // Writer is an io.WriteCloser that xz-compresses its input and writes it to an underlying io.Writer
