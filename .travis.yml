@@ -8,7 +8,7 @@ arch:
 script:
   - which xz
   - xz --version
-  - CC=gcc go build cmd/goxz.go
+  - CC=gcc go build internal/goxz/goxz.go
   - CC=gcc go test ./...
-  - CC=clang go build -a cmd/goxz.go
+  - CC=clang go build -a internal/goxz/goxz.go
   - CC=clang go test ./... -count=1

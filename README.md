@@ -1,8 +1,12 @@
-# xz compression in Go
+# xz compression in Go [![GoDoc](https://godoc.org/github.com/jamespfennell/xz?status.png)](https://godoc.org/github.com/jamespfennell/xz)
 
 This is a Go package for compressing and decompressing data in the xz format.
-It works via a cgo wrapper around the C lzma2 library which is part of the 
+It works via a cgo wrapper around the lzma2 C library, which is part of the 
 [XZ Utils project](https://tukaani.org/xz/).
+The package does not require the lzma2 library to be installed, and on 
+    any system can be used simply with:
+    
+    go get github.com/jamespfennell/xz@v0.1.0
 
 ## Usage
 
@@ -30,6 +34,8 @@ func NewWriterLevel(w io.Writer, level int) *Writer
 func NewReader(r io.Reader) *Reader
 ```
 
+The full API can be browsed on [pkg.go.dev](https://pkg.go.dev/github.com/jamespfennell/xz).
+
 ## Build information
 
 The lzma2 C code is automatically compiled by `go build`.
@@ -45,28 +51,34 @@ As part of the CI, the package is built and tested in the following environments
 | Windows | x86 | GCC | [![Windows build status](https://github.com/jamespfennell/xz/actions/workflows/windows.yml/badge.svg?branch=main)](https://github.com/jamespfennell/xz/actions/workflows/windows.yml?query=branch%3Amain)
 
 As an alternative to compiling the C files during `go build`, the package can statically link to a precompiled
-lzma library if it is already present on the system.
+lzma2 library if it is already present on the system.
 To do this, use the following build invocation:
  
     CGO_CFLAGS=-DGOXZ_SKIP_C_COMPILATION CGO_LDFLAGS=-llzma go build ...
     
-The lzma library is present on MacOS by default.
+The lzma2 library is present on MacOS by default.
 On Debian it can be installed through the apt package `liblzma-dev`.
 The CI builds and tests the package using this static linking approach for both MacOS and Linux on x86.
 
-## The lzma sub-package
+## Advanced usage: the lzma sub-package
 
-This section is targeted at people who want to use features of the C lzma2 library that are not currently exposed
-    through the xz package.
-We're open to pull requests that add new lzma2 features to the package.
+The main xz package only exposes a limited subset of the lzma2 C library.
+More advanced features of the library can be accessed using the lzma Go sub-package,
+    which is where the actual cgo wrapping happens.
+Currently, the sub-package only has enough wrapping code to facilitate the main xz use cases,
+    however it is easy to extend it to access any method of the C library.
 
-The lzma2 C library is wrapped using cgo in the lzma Go sub-package.
 This sub-package is pretty "low level" and mostly just maps Go function calls/data structures directly to
     C function calls/data structures.
 One consequence of this is that the sub-package does not have an idiomatic Go API. 
 For example, instead of returning error types it returns integer statuses, as the C code does.
-The main xz package wraps the sub-package and provides the idiomatic Go API.
+Using the sub-package also involves being familiar with the lzma2 API.
+Ideally, additional features of the lzma2 library would be exposed through an idiomatic Go API in the xz package;
+    we are open to pull requests in this direction.
 
+In order to extend the lzma sub-package it may be necessary to tweak the cgo setup, which
+    we now describe.
+   
 One of the rules of cgo is that all dependent C files must be in the same directory as the Go file that references
 them.
 For this kind of project, this usually necessitates copying files from the upstream project into the directory.
@@ -84,24 +96,24 @@ This is one of those things that's not really important but "feels good".
 
 The shim files are generated automatically using the vendorize script:
 
-    go run lzma/vendorize/vendorize.go
+    go run internal/vendorize/vendorize.go
 
 The script does not include every C file in the lzma2 library.
 This is because the xz package does not use every lzma2 feature, and we can skip compiling features we don't need.
 Doing so cuts the compilation time about in half.
 The catch is that some features of the lzma2 library
-    (like CRC64 checking) won't work unless additional source files are vendored in.
+    (like the x86 filter) won't work unless additional source files are vendored in.
 In this case you can just pass the `--all` flag to the script and every possible C file will be included.
 
 ## The goxz command
 
-The cmd subdirectory contains an example command line tool `goxz` built on top of the xz package.
+The internal/goxz subdirectory contains an example command line tool `goxz` built on top of the xz package.
 It only exposes limited features of the lzma2 library; the standard `xz` command from XZ-Utils is
 much richer.
 
 ## Thanks
 
-The lzma2 C library was written by Lasse Collin.
+The lzma2 C library was mostly written by Lasse Collin.
 The documentation for this library is really excellent, which made this package so much easier to write.
 
 ## License

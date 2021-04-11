@@ -1,4 +1,4 @@
-// Package lzma is a thin wrapper around the C lzma library.
+// Package lzma is a thin wrapper around the C lzma2 library.
 //
 // The emphasis is on the word "thin". This package does not provide an
 // idiomatic Go API; rather, it simply wraps C functions and types with
@@ -48,9 +48,6 @@ import (
 	"unsafe"
 )
 
-// Return corresponds to the lzma_ret type in base.h.
-type Return int
-
 const (
 	Ok               Return = 0
 	StreamEnd               = 1
@@ -66,6 +63,17 @@ const (
 	ProgrammingError        = 11
 	SeekNeeded              = 12
 )
+
+const (
+	Run         Action = 0
+	SyncFlush          = 1
+	FullFlush          = 2
+	Finish             = 3
+	FullBarrier        = 4
+)
+
+// Return corresponds to the lzma_ret type in base.h.
+type Return int
 
 func (r Return) String() string {
 	switch r {
@@ -99,20 +107,13 @@ func (r Return) String() string {
 	return "UNKNOWN_RESULT"
 }
 
+// IsErr returns true if the return code indicates an error condition.
 func (r Return) IsErr() bool {
 	return r != Ok && r != StreamEnd
 }
 
 // Action corresponds to the lzma_action type in base.h.
 type Action int
-
-const (
-	Run         Action = 0
-	SyncFlush          = 1
-	FullFlush          = 2
-	Finish             = 3
-	FullBarrier        = 4
-)
 
 func (a Action) String() string {
 	switch a {

@@ -15,21 +15,19 @@ const (
 	DefaultCompression = 6
 )
 
-// LzmaError may be returned if the underlying lzma library returns an error code during compression or decompression.
-// Receiving this error indicates a bug in the xz package, and a bug report would be appreciated.
+// LzmaError will be returned if the underlying lzma2 C library returns an error code during compression or
+// decompression.
+// Receiving this error directly often means there is a bug in the xz package, and a bug report would be appreciated.
 type LzmaError struct {
-	result lzma.Return
+	// Return is the raw code returned by the lzma2 C library.
+	Return lzma.Return
 }
 
 func (err LzmaError) Error() string {
-	return fmt.Sprintf("lzma library returned a %s error", err.result)
+	return fmt.Sprintf("lzma library returned a %s error", err.Return)
 }
 
-func (err LzmaError) Code() lzma.Return {
-	return err.result
-}
-
-// Writer is an io.WriteCloser that xz-compresses its input and writes it to an underlying io.Writer
+// Writer is an io.WriteCloser that xz-compresses input bytes and writes the output bytes to an underlying io.Writer
 type Writer struct {
 	lzmaStream *lzma.Stream
 	w          io.Writer
@@ -56,7 +54,7 @@ func NewWriterLevel(w io.Writer, level int) *Writer {
 	}
 	s := lzma.NewStream()
 	if ret := lzma.EasyEncoder(s, level); ret != lzma.Ok {
-		_, _ = fmt.Fprintf(os.Stderr, "xz library: unexpected result from encoder initialization: %s\n", ret)
+		_, _ = fmt.Fprintf(os.Stderr, "xz library: unexpected Return from encoder initialization: %s\n", ret)
 	}
 	return &Writer{
 		lzmaStream: s,
@@ -83,7 +81,7 @@ func (z *Writer) Close() error {
 	return err
 }
 
-// Reader is an io.ReadCloser that xz-decompresses from an underlying io.Reader.
+// Reader is an io.ReadCloser that xz-decompresses bytes from an underlying io.Reader.
 type Reader struct {
 	lzmaStream    *lzma.Stream
 	r             io.Reader
@@ -92,11 +90,11 @@ type Reader struct {
 	lastErr       error
 }
 
-// NewReader creates a new Reader that reads xz-compressed input from r and returns uncompressed output.
+// NewReader creates a new Reader that reads xz-compressed input bytes from r and returns uncompressed output bytes.
 func NewReader(r io.Reader) *Reader {
 	s := lzma.NewStream()
 	if ret := lzma.StreamDecoder(s); ret != lzma.Ok {
-		_, _ = fmt.Fprintf(os.Stderr, "xz library: unexpected result from decoder initialization: %s\n", ret)
+		_, _ = fmt.Fprintf(os.Stderr, "xz library: unexpected Return from decoder initialization: %s\n", ret)
 	}
 	return &Reader{
 		lzmaStream: s,
@@ -154,7 +152,7 @@ func runLzma(lzmaStream *lzma.Stream, w io.Writer, action lzma.Action) error {
 		if action == lzma.Run && lzmaStream.AvailIn() == 0 {
 			break
 		}
-		result := lzma.Code(lzmaStream, action)
+		ret := lzma.Code(lzmaStream, action)
 		// The output buffer is not necessarily full, but for simplicity we just copy and clear it.
 		// An alternative would be to remove the write here and replace it with the following 2 writes:
 		//   1. before lzma.Code if lzmaStream.AvailOut() == 0; i.e., clear the buffer if we're out of space.
@@ -162,16 +160,16 @@ func runLzma(lzmaStream *lzma.Stream, w io.Writer, action lzma.Action) error {
 		if _, err := w.Write(lzmaStream.Output()); err != nil {
 			return err
 		}
-		if action == lzma.Finish && result == lzma.StreamEnd {
+		if action == lzma.Finish && ret == lzma.StreamEnd {
 			break
 		}
-		if result == lzma.FormatError || result == lzma.DataError {
+		if ret == lzma.FormatError || ret == lzma.DataError {
 			return fmt.Errorf(
 				"the compressed input is not in the xz format or is corrupted: %w",
-				LzmaError{result: result})
+				LzmaError{Return: ret})
 		}
-		if result.IsErr() {
-			return LzmaError{result: result}
+		if ret.IsErr() {
+			return LzmaError{Return: ret}
 		}
 	}
 	return nil

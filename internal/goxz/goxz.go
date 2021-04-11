@@ -1,3 +1,4 @@
+// Package main contains an example command line tool goxz built on top of the xz package.
 package main
 
 import (

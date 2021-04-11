@@ -16,7 +16,7 @@ jobs:
       - name: Retrieve submodule
         run: git submodule update --init
       - name: Build
-        run: CC=${{ matrix.cCompiler }} go build cmd/goxz.go
+        run: CC=${{ matrix.cCompiler }} go build internal/goxz/goxz.go
       - name: Test
         run: CC=${{ matrix.cCompiler }} go test ./...
 
@@ -32,6 +32,6 @@ jobs:
       - name: Retrieve submodule
         run: git submodule update --init
       - name: Build
-        run: CGO_CFLAGS=-DGOXZ_SKIP_C_COMPILATION CGO_LDFLAGS=-llzma go build cmd/goxz.go
+        run: CGO_CFLAGS=-DGOXZ_SKIP_C_COMPILATION CGO_LDFLAGS=-llzma go build internal/goxz/goxz.go
       - name: Test
         run: CGO_CFLAGS=-DGOXZ_SKIP_C_COMPILATION CGO_LDFLAGS=-llzma go test ./...

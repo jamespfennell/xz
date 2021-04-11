@@ -16,3 +16,4 @@
 .idea
 test*
 goxz
+!internal/goxz

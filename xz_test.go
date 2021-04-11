@@ -27,6 +27,8 @@ type testCase struct {
 
 func runOverAllTestCases(t *testing.T, fn func(*testing.T, testCase)) {
 	strings := [][]byte{
+		[]byte(""),
+		[]byte("i"),
 		[]byte(smallString),
 		aliceInWonderland,
 		readme,
@@ -34,9 +36,12 @@ func runOverAllTestCases(t *testing.T, fn func(*testing.T, testCase)) {
 	}
 	for _, input := range strings {
 		for compression := BestSpeed; compression <= BestCompression; compression++ {
+			shortInput := string(input)
+			if len(shortInput) > 10 {
+				shortInput = shortInput[:10] + "..."
+			}
 			t.Run(
-				fmt.Sprintf(
-					"input %s... / compression level %d", string(input)[:10], compression),
+				fmt.Sprintf("input %s... / compression level %d", shortInput, compression),
 				func(t *testing.T) {
 					fn(t, testCase{
 						input:       input,
