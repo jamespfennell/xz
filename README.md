@@ -1,12 +1,12 @@
-# xz compression in Go
+# xz compression in Go [![GoDoc](https://godoc.org/github.com/jamespfennell/xz?status.png)](https://godoc.org/github.com/jamespfennell/xz)
 
 This is a Go package for compressing and decompressing data in the xz format.
 It works via a cgo wrapper around the lzma2 C library, which is part of the 
 [XZ Utils project](https://tukaani.org/xz/).
 The package does not require the lzma2 library to be installed, and on 
-    any system can simply be used with:
+    any system can be used simply with:
     
-    go get github.com/jamespfennell/xz
+    go get github.com/jamespfennell/xz@v0.1.0
 
 ## Usage
 
@@ -33,6 +33,8 @@ func NewWriterLevel(w io.Writer, level int) *Writer
 // and returns decompressed output.
 func NewReader(r io.Reader) *Reader
 ```
+
+The full API can be browsed on [pkg.go.dev](https://pkg.go.dev/github.com/jamespfennell/xz).
 
 ## Build information
 
@@ -111,7 +113,7 @@ much richer.
 
 ## Thanks
 
-The lzma2 C library was written by Lasse Collin.
+The lzma2 C library was mostly written by Lasse Collin.
 The documentation for this library is really excellent, which made this package so much easier to write.
 
 ## License

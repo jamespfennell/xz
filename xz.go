@@ -16,7 +16,7 @@ const (
 )
 
 // LzmaError may be returned if the underlying lzma library returns an error code during compression or decompression.
-// Receiving this error indicates a bug in the xz package, and a bug report would be appreciated.
+// Receiving this error directly often a bug in the xz package, and a bug report would be appreciated.
 type LzmaError struct {
 	result lzma.Return
 }
@@ -25,11 +25,12 @@ func (err LzmaError) Error() string {
 	return fmt.Sprintf("lzma library returned a %s error", err.result)
 }
 
+// Code returns the underlying lzma library code of the error.
 func (err LzmaError) Code() lzma.Return {
 	return err.result
 }
 
-// Writer is an io.WriteCloser that xz-compresses its input and writes it to an underlying io.Writer
+// Writer is an io.WriteCloser that xz-compresses its input and writes the output it to an underlying io.Writer
 type Writer struct {
 	lzmaStream *lzma.Stream
 	w          io.Writer
