@@ -51,12 +51,12 @@ As part of the CI, the package is built and tested in the following environments
 | Windows | x86 | GCC | [![Windows build status](https://github.com/jamespfennell/xz/actions/workflows/windows.yml/badge.svg?branch=main)](https://github.com/jamespfennell/xz/actions/workflows/windows.yml?query=branch%3Amain)
 
 As an alternative to compiling the C files during `go build`, the package can statically link to a precompiled
-lzma library if it is already present on the system.
+lzma2 library if it is already present on the system.
 To do this, use the following build invocation:
  
     CGO_CFLAGS=-DGOXZ_SKIP_C_COMPILATION CGO_LDFLAGS=-llzma go build ...
     
-The lzma library is present on MacOS by default.
+The lzma2 library is present on MacOS by default.
 On Debian it can be installed through the apt package `liblzma-dev`.
 The CI builds and tests the package using this static linking approach for both MacOS and Linux on x86.
 
@@ -73,7 +73,7 @@ This sub-package is pretty "low level" and mostly just maps Go function calls/da
 One consequence of this is that the sub-package does not have an idiomatic Go API. 
 For example, instead of returning error types it returns integer statuses, as the C code does.
 Using the sub-package also involves being familiar with the lzma2 API.
-Ideally new features of the lzma2 library would be exposed through an idiomatic Go API in the xz package;
+Ideally, additional features of the lzma2 library would be exposed through an idiomatic Go API in the xz package;
     we are open to pull requests in this direction.
 
 In order to extend the lzma sub-package it may be necessary to tweak the cgo setup, which
@@ -102,7 +102,7 @@ The script does not include every C file in the lzma2 library.
 This is because the xz package does not use every lzma2 feature, and we can skip compiling features we don't need.
 Doing so cuts the compilation time about in half.
 The catch is that some features of the lzma2 library
-    (like CRC64 checking) won't work unless additional source files are vendored in.
+    (like the x86 filter) won't work unless additional source files are vendored in.
 In this case you can just pass the `--all` flag to the script and every possible C file will be included.
 
 ## The goxz command
