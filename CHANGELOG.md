@@ -20,4 +20,4 @@
 
 [unreleased]: https://github.com/jamespfennell/xz/compare/v0.1.1...HEAD
 [0.1.1]: https://github.com/jamespfennell/xz/compare/v0.1.0...v0.1.1
-[0.1.0]: https://github.com/jamespfennell/xz/keep-a-changelog/releases/tag/v0.0.1
+[0.1.0]: https://github.com/jamespfennell/xz/compare/d164ed5c1f3e59bdb117c87312078543522ab99a...v0.1.0
