@@ -3,10 +3,10 @@
 This is a Go package for compressing and decompressing data in the xz format.
 It works via a cgo wrapper around the lzma2 C library, which is part of the 
 [XZ Utils project](https://tukaani.org/xz/).
-The package does not require the lzma2 library or other system dependencies, 
-    and can be used simply with:
+The package does not require the lzma2 library to be installed, and on 
+    any system can simply be used with:
     
-    go get -u github.com/jamespfennell/xz
+    go get github.com/jamespfennell/xz
 
 ## Usage
 
@@ -58,19 +58,25 @@ The lzma library is present on MacOS by default.
 On Debian it can be installed through the apt package `liblzma-dev`.
 The CI builds and tests the package using this static linking approach for both MacOS and Linux on x86.
 
-## The lzma sub-package
+## Advanced usage: the lzma sub-package
 
-This section is targeted at people who want to use features of the C lzma2 library that are not currently exposed
-    through the xz package.
-We're open to pull requests that add new lzma2 features to the package.
+The main xz package only exposes a limited subset of the lzma2 C library.
+More advanced features of the library can be accessed using the lzma Go sub-package,
+    which is where the actual cgo wrapping happens.
+Currently, the sub-package only has enough wrapping code to facilitate the main xz use cases,
+    however it is easy to extend it to access any method of the C library.
 
-The lzma2 C library is wrapped using cgo in the lzma Go sub-package.
 This sub-package is pretty "low level" and mostly just maps Go function calls/data structures directly to
     C function calls/data structures.
 One consequence of this is that the sub-package does not have an idiomatic Go API. 
 For example, instead of returning error types it returns integer statuses, as the C code does.
-The main xz package wraps the sub-package and provides the idiomatic Go API.
+Using the sub-package also involves being familiar with the lzma2 API.
+Ideally new features of the lzma2 library would be exposed through an idiomatic Go API in the xz package;
+    we are open to pull requests in this direction.
 
+In order to extend the lzma sub-package it may be necessary to tweak the cgo setup, which
+    we now describe.
+   
 One of the rules of cgo is that all dependent C files must be in the same directory as the Go file that references
 them.
 For this kind of project, this usually necessitates copying files from the upstream project into the directory.
