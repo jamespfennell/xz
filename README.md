@@ -107,7 +107,7 @@ In this case you can just pass the `--all` flag to the script and every possible
 
 ## The goxz command
 
-The cmd subdirectory contains an example command line tool `goxz` built on top of the xz package.
+The internal/goxz subdirectory contains an example command line tool `goxz` built on top of the xz package.
 It only exposes limited features of the lzma2 library; the standard `xz` command from XZ-Utils is
 much richer.
 
