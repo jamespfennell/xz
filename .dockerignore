@@ -5,7 +5,7 @@
 !xz_test.go
 !alice_in_wonderland.txt
 
-!cmd/goxz.go
+!internal/goxz/goxz.go
 
 !lzma/lzma.go
 !lzma/upstream/src/liblzma/api/*
