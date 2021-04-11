@@ -1,8 +1,12 @@
 # xz compression in Go
 
 This is a Go package for compressing and decompressing data in the xz format.
-It works via a cgo wrapper around the C lzma2 library which is part of the 
+It works via a cgo wrapper around the lzma2 C library, which is part of the 
 [XZ Utils project](https://tukaani.org/xz/).
+The package does not require the lzma2 library or other system dependencies, 
+    and can be used simply with:
+    
+    go get -u github.com/jamespfennell/xz
 
 ## Usage
 
