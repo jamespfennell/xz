@@ -26,6 +26,8 @@ const requiredUpstreamFiles = `
 src/liblzma/check/check.c
 src/liblzma/check/crc32_fast.c
 src/liblzma/check/crc32_table.c
+src/liblzma/check/crc64_fast.c
+src/liblzma/check/crc64_table.c
 
 src/liblzma/common/block_decoder.c
 src/liblzma/common/block_encoder.c

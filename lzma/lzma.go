@@ -24,17 +24,14 @@ package lzma
 #cgo CFLAGS: -Iupstream/src/liblzma/simple
 
 #cgo CFLAGS: -DHAVE_ENCODER_LZMA2 -DHAVE_DECODER_LZMA2
-// TODO: the CRC32 flag is needed, figure out why
-//  At the same time, we want to figure out if checking should be done always
-#cgo CFLAGS: -DHAVE_CHECK_CRC32
-// -DHAVE_CHECK_CRC64
-// -DHAVE_CHECK_SHA256
-// TODO: which of these MF flags are actually needed? And what are they for?
-#cgo CFLAGS: -DHAVE_MF_BT2 -DHAVE_MF_BT3  -DHAVE_MF_HC3  -DHAVE_MF_HC4 -DHAVE_MF_BT4
-// TODO: can we not hard code SIZEOF_SIZE_T? Do we need all of these flags? Let's find out
+#cgo CFLAGS: -DHAVE_CHECK_CRC32 -DHAVE_CHECK_CRC64
+// The following 3 flags were determined by inspecting lzma_encoder_presets.c
+#cgo CFLAGS: -DHAVE_MF_HC3 -DHAVE_MF_HC4 -DHAVE_MF_BT4
+// Note that only 64-bit architectures are supported becase we set SIZEOF_SIZE_T=8
 #cgo CFLAGS: -DHAVE_STDBOOL_H -DSIZEOF_SIZE_T=8 -DHAVE_STDINT_H -DHAVE_INTTYPES_H
 
 #include <stdlib.h>
+#include <string.h>
 
 #include "lzma.h"
 
@@ -136,17 +133,31 @@ func (a Action) String() string {
 type cBuffer struct {
 	start *C.uint8_t
 	len   C.size_t
+	cap   C.size_t
 }
 
 func (buf *cBuffer) set(p []byte) {
-	// TODO: instead of allocating for each SetInput, allocate once and copy over
-	buf.clear()
-	buf.start = (*C.uint8_t)(C.CBytes(p))
+	if len(p) == 0 {
+		buf.len = 0
+		return
+	}
+	buf.grow(len(p))
+	C.memcpy(unsafe.Pointer(buf.start), unsafe.Pointer(&p[0]), C.size_t(len(p)))
 	buf.len = C.size_t(len(p))
 }
 
 func (buf *cBuffer) read(length int) []byte {
 	return C.GoBytes(unsafe.Pointer(buf.start), C.int(length))
+}
+
+func (buf *cBuffer) grow(n int) {
+	if n <= int(buf.cap) {
+		return
+	}
+	buf.clear()
+	buf.start = (*C.uint8_t)(C.malloc(C.size_t(n)))
+	buf.len = 0
+	buf.cap = C.size_t(n)
 }
 
 func (buf *cBuffer) clear() {
@@ -155,6 +166,7 @@ func (buf *cBuffer) clear() {
 	}
 	buf.start = nil
 	buf.len = 0
+	buf.cap = 0
 }
 
 // This was chosen arbitrarily but seems to work fine in practice
@@ -178,9 +190,8 @@ func NewStream() *Stream {
 	stream := Stream{
 		cStream: C.new_stream(),
 	}
-	// This is memory inefficient but not a big deal because it's a once off and only 1kb of memory.
-	p := make([]byte, outputBufferLength)
-	stream.output.set(p)
+	stream.output.grow(outputBufferLength)
+	stream.output.len = outputBufferLength
 	stream.cStream.next_out = stream.output.start
 	stream.cStream.avail_out = stream.output.len
 	return &stream
@@ -230,20 +241,22 @@ func (stream *Stream) Output() []byte {
 func (stream *Stream) Close() {
 	stream.input.clear()
 	stream.output.clear()
-	// TODO: move lzma_end to its own function
+	End(stream)
+}
+
+// End wraps lzma_end in base.h.
+func End(stream *Stream) {
 	C.lzma_end(&stream.cStream)
 }
 
 // EasyEncoder wraps lzma_easy_encoder in container.h.
 func EasyEncoder(stream *Stream, preset int) Return {
-	// TODO: do integrity checking
-	return Return(C.lzma_easy_encoder(&stream.cStream, C.uint(preset), 0))
+	return Return(C.lzma_easy_encoder(&stream.cStream, C.uint(preset), C.LZMA_CHECK_CRC64))
 }
 
 // StreamDecoder wraps lzma_stream_decoder in container.h.
 func StreamDecoder(stream *Stream) Return {
-	// TODO: do integrity checking
-	return Return(C.lzma_stream_decoder(&stream.cStream, C.UINT64_MAX, 0))
+	return Return(C.lzma_stream_decoder(&stream.cStream, C.UINT64_MAX, C.LZMA_TELL_UNSUPPORTED_CHECK))
 }
 
 // Code wraps lzma_code in base.h.

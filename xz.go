@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/jamespfennell/xz/lzma"
 	"io"
+	"os"
 )
 
 const (
@@ -21,10 +22,11 @@ type LzmaError struct {
 }
 
 func (err LzmaError) Error() string {
-	// TODO: FORMAT_ERROR can indicate a corrupted reader; we should say this/
-	// TODO: we need to audit all possible errors and return appropriate text.
-	return fmt.Sprintf(
-		"lzma library returned a %s error", err.result)
+	return fmt.Sprintf("lzma library returned a %s error", err.result)
+}
+
+func (err LzmaError) Code() lzma.Return {
+	return err.result
 }
 
 // Writer is an io.WriteCloser that xz-compresses its input and writes it to an underlying io.Writer
@@ -45,16 +47,16 @@ func NewWriter(w io.Writer) *Writer {
 // or down accordingly.
 func NewWriterLevel(w io.Writer, level int) *Writer {
 	if level < BestSpeed {
-		fmt.Printf("xz library: unexpected negative compression level %d; using level 0\n", level)
+		_, _ = fmt.Fprintf(os.Stderr, "xz library: unexpected negative compression level %d; using level 0\n", level)
 		level = BestSpeed
 	}
 	if level > BestCompression {
-		fmt.Printf("xz library: unexpected compression level %d bigger than 9; using level 9\n", level)
+		_, _ = fmt.Fprintf(os.Stderr, "xz library: unexpected compression level %d bigger than 9; using level 9\n", level)
 		level = BestCompression
 	}
 	s := lzma.NewStream()
 	if ret := lzma.EasyEncoder(s, level); ret != lzma.Ok {
-		fmt.Printf("xz library: unexpected result from encoder initialization: %s\n", ret)
+		_, _ = fmt.Fprintf(os.Stderr, "xz library: unexpected result from encoder initialization: %s\n", ret)
 	}
 	return &Writer{
 		lzmaStream: s,
@@ -94,7 +96,7 @@ type Reader struct {
 func NewReader(r io.Reader) *Reader {
 	s := lzma.NewStream()
 	if ret := lzma.StreamDecoder(s); ret != lzma.Ok {
-		fmt.Printf("xz library: unexpected result from decoder initialization: %s\n", ret)
+		_, _ = fmt.Fprintf(os.Stderr, "xz library: unexpected result from decoder initialization: %s\n", ret)
 	}
 	return &Reader{
 		lzmaStream: s,
@@ -162,6 +164,11 @@ func runLzma(lzmaStream *lzma.Stream, w io.Writer, action lzma.Action) error {
 		}
 		if action == lzma.Finish && result == lzma.StreamEnd {
 			break
+		}
+		if result == lzma.FormatError || result == lzma.DataError {
+			return fmt.Errorf(
+				"the compressed input is not in the xz format or is corrupted: %w",
+				LzmaError{result: result})
 		}
 		if result.IsErr() {
 			return LzmaError{result: result}

@@ -39,7 +39,6 @@ Options:
 
 func main() {
 	p, err := newParamsFromArgs(os.Args[1:])
-	// TODO: print usage
 	nilErrOrReturn(err)
 
 	input, err := openInput(p.InputFile)
@@ -97,7 +96,6 @@ func newParamsFromArgs(args []string) (p params, err error) {
 		_, _ = fmt.Fprint(set.Output(), usage, "\n")
 	}
 	// In case of an error os.Exit will be called by the flag package, per the flag.ExitOnError setting above
-	// TODO: reconsider
 	_ = set.Parse(args)
 	p.Level, err = determineCompressionLevel(compressionLevel)
 	if err != nil {
@@ -105,12 +103,14 @@ func newParamsFromArgs(args []string) (p params, err error) {
 	}
 
 	if set.NArg() == 0 {
-		fmt.Printf("Error: <input_file> must be provided. Full help text:\n\n")
-		flag.Usage()
+		_, _ = fmt.Fprintf(set.Output(), "Invalid args: <input_file> must be provided\n")
+		set.Usage()
 		os.Exit(1)
 	}
 	if set.NArg() > 2 {
-		nilErrOrReturn(fmt.Errorf("too many arguments passed (flags must come before <input_file>)"))
+		_, _ = fmt.Fprintf(set.Output(), "Invalid args: too many args passed (flags must come before <input_file>)\n")
+		set.Usage()
+		os.Exit(1)
 	}
 	p.InputFile = set.Arg(0)
 	if p.IsCompression, err = isCompression(forceCompression, forceDecompression, p.InputFile); err != nil {
@@ -204,8 +204,7 @@ func openOutput(outputFile string, force bool) (io.WriteCloser, error) {
 
 func nilErrOrReturn(err error) {
 	if err != nil {
-		// TODO: print to stderr
-		fmt.Printf("Error: %s.\n", err)
+		_, _ = fmt.Fprintf(os.Stderr, "Error: %s.\n", err)
 		os.Exit(1)
 	}
 }
