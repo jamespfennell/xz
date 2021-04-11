@@ -125,7 +125,7 @@ func main() {
 	}
 	fmt.Println("Running build and tests")
 	if !runBuildAndTests() {
-		fmt.Println("Build and tests failed! Run `go build -a cmd/goxz.go` to `go test ./...` to investigate.")
+		fmt.Println("Build and tests failed! Run `go build -a goxz/goxz.go` to `go test ./...` to investigate.")
 		os.Exit(1)
 	}
 	fmt.Println("Success")
@@ -170,7 +170,7 @@ func listAllCFilesInUpstream() ([]string, error) {
 }
 
 func runBuildAndTests() bool {
-	return exec.Command("go", "build", "-a", "cmd/goxz.go").Run() == nil &&
+	return exec.Command("go", "build", "-a", "goxz/goxz.go").Run() == nil &&
 		exec.Command("go", "test", "./...").Run() == nil
 }
 

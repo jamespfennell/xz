@@ -13,6 +13,6 @@ jobs:
       - name: Retrieve submodule
         run: git submodule update --init
       - name: Build
-        run: go build cmd/goxz.go
+        run: go build internal/goxz/goxz.go
       - name: Test
         run: go test ./...

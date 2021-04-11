@@ -96,7 +96,7 @@ This is one of those things that's not really important but "feels good".
 
 The shim files are generated automatically using the vendorize script:
 
-    go run lzma/vendorize/vendorize.go
+    go run internal/vendorize/vendorize.go
 
 The script does not include every C file in the lzma2 library.
 This is because the xz package does not use every lzma2 feature, and we can skip compiling features we don't need.
