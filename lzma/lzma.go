@@ -33,7 +33,7 @@ package lzma
 #include <stdlib.h>
 #include <string.h>
 
-#include "lzma.h"
+#include "src/liblzma/api/lzma.h"
 
 // The lzma library requires that the stream be initialized to the value of the macro
 // LZMA_STREAM_INIT. Because this is a macro it has no type. This function exists to cast the
