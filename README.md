@@ -6,7 +6,7 @@ It works via a cgo wrapper around the lzma2 C library, which is part of the
 The package does not require the lzma2 library to be installed, and on 
     any system can be used simply with:
     
-    go get github.com/jamespfennell/xz@v0.1.0
+    go get github.com/jamespfennell/xz@v0.1.2
 
 ## Usage
 
@@ -94,9 +94,9 @@ This enables users to build the package by statically linking to a prebuilt syst
 Second, it means that non-trivial source files are not duplicated in source control.
 This is one of those things that's not really important but "feels good".
 
-The shim files are generated automatically using the vendorize script:
+The shim files are generated automatically using the vendor script:
 
-    go run internal/vendorize/vendorize.go
+    go run internal/vendorc/vendorc.go
 
 The script does not include every C file in the lzma2 library.
 This is because the xz package does not use every lzma2 feature, and we can skip compiling features we don't need.
@@ -118,8 +118,6 @@ The documentation for this library is really excellent, which made this package 
 
 ## License
 
-All files in this repository, except Alice In Wonderland, are original and are released under the MIT license.
+All files in the lzma/src tree are copied from the upstream lzma2 repository and are in the public domain.
 Alice In Wonderland is used for testing only, and is in the public domain.
-Building the package involves pulling in C files from the upstream repository
-    via the Git submodule at `lzma/upstream`.
-These C files are all in the public domain.
+All other files in the repository are released under the MIT license.

@@ -13,15 +13,15 @@
 package lzma
 
 /*
-#cgo CFLAGS: -Iupstream/src/common
-#cgo CFLAGS: -Iupstream/src/liblzma/api
-#cgo CFLAGS: -Iupstream/src/liblzma/common
-#cgo CFLAGS: -Iupstream/src/liblzma/check
-#cgo CFLAGS: -Iupstream/src/liblzma/delta
-#cgo CFLAGS: -Iupstream/src/liblzma/lz
-#cgo CFLAGS: -Iupstream/src/liblzma/lzma
-#cgo CFLAGS: -Iupstream/src/liblzma/rangecoder
-#cgo CFLAGS: -Iupstream/src/liblzma/simple
+#cgo CFLAGS: -Isrc/common
+#cgo CFLAGS: -Isrc/liblzma/api
+#cgo CFLAGS: -Isrc/liblzma/common
+#cgo CFLAGS: -Isrc/liblzma/check
+#cgo CFLAGS: -Isrc/liblzma/delta
+#cgo CFLAGS: -Isrc/liblzma/lz
+#cgo CFLAGS: -Isrc/liblzma/lzma
+#cgo CFLAGS: -Isrc/liblzma/rangecoder
+#cgo CFLAGS: -Isrc/liblzma/simple
 
 #cgo CFLAGS: -DHAVE_ENCODER_LZMA2 -DHAVE_DECODER_LZMA2
 #cgo CFLAGS: -DHAVE_CHECK_CRC32 -DHAVE_CHECK_CRC64
@@ -33,7 +33,7 @@ package lzma
 #include <stdlib.h>
 #include <string.h>
 
-#include "lzma.h"
+#include "src/liblzma/api/lzma.h"
 
 // The lzma library requires that the stream be initialized to the value of the macro
 // LZMA_STREAM_INIT. Because this is a macro it has no type. This function exists to cast the
