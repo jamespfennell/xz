@@ -30,14 +30,14 @@ const lzmaDirectory = `lzma`
 const requiredFiles = `required_files.txt`
 const publicDomainStatement = `This file has been put into the public domain.`
 
-var vendorizeAllFiles bool
-var skipBuldAndTests bool
+var vendorAllFiles bool
+var skipBuildAndTests bool
 var optimizeFiles bool
 
 func init() {
-	flag.BoolVar(&vendorizeAllFiles, "all", false,
+	flag.BoolVar(&vendorAllFiles, "all", false,
 		"vendor all C files in the upstream repo, not just those explicitly required")
-	flag.BoolVar(&skipBuldAndTests, "skip-build", false,
+	flag.BoolVar(&skipBuildAndTests, "skip-build", false,
 		"skip build and tests after vendoring")
 	flag.BoolVar(&optimizeFiles, "optimize", false,
 		"optimize the files by removing source files not needed for the tests to pass")
@@ -52,7 +52,7 @@ func main() {
 
 	var err error
 	var files []string
-	if vendorizeAllFiles {
+	if vendorAllFiles {
 		files, err = listAllCFilesInUpstream()
 		if err != nil {
 			fmt.Println("Failed to list all C files in upstream:", err)
@@ -71,7 +71,7 @@ func main() {
 		files = optimize(files)
 	}
 
-	if !vendorize(files, true) {
+	if !vendor(files, true) {
 		os.Exit(1)
 	}
 
@@ -92,7 +92,7 @@ func optimize(files []string) []string {
 		copy(thisFiles, files[:i])
 		thisFiles = append(thisFiles, files[i+1:]...)
 		fmt.Printf("Testing the build without %s\n", file)
-		if vendorize(thisFiles, false) {
+		if vendor(thisFiles, false) {
 			fmt.Println("!!Passed!!")
 		} else {
 			fmt.Println("  Failed")
@@ -107,18 +107,18 @@ func optimize(files []string) []string {
 	return required
 }
 
-func vendorize(files []string, verbose bool) bool {
-	removeVendorizedCFiles()
+func vendor(files []string, verbose bool) bool {
+	removeVendoredCFiles()
 	for _, file := range files {
 		if verbose {
 			fmt.Println("Vendoring", file)
 		}
-		if err := vendorizeCFile(file); err != nil {
+		if err := vendorOneCFile(file); err != nil {
 			fmt.Printf("Failed to vendor C file %s: %s\n", file, err)
 			os.Exit(1)
 		}
 	}
-	if skipBuldAndTests {
+	if skipBuildAndTests {
 		return true
 	}
 	if verbose {
@@ -186,7 +186,7 @@ func runBuildAndTests() bool {
 		exec.Command("go", "test", "./...").Run() == nil
 }
 
-func vendorizeCFile(upstreamFile string) error {
+func vendorOneCFile(upstreamFile string) error {
 	b, err := os.ReadFile(filepath.Join(upstreamRoot, upstreamFile))
 	if err != nil {
 		return err
@@ -194,11 +194,11 @@ func vendorizeCFile(upstreamFile string) error {
 	if !isPublicDomain(upstreamFile, string(b)) {
 		return fmt.Errorf("upstream file %s is not in the public domain", upstreamFile)
 	}
-	vendorizedFile := filepath.Join(lzmaDirectory, upstreamFile)
-	if err := os.MkdirAll(filepath.Dir(vendorizedFile), 0777); err != nil {
+	vendoredFile := filepath.Join(lzmaDirectory, upstreamFile)
+	if err := os.MkdirAll(filepath.Dir(vendoredFile), 0777); err != nil {
 		return err
 	}
-	if err := os.WriteFile(vendorizedFile, b, 0666); err != nil {
+	if err := os.WriteFile(vendoredFile, b, 0666); err != nil {
 		return err
 	}
 	if !strings.HasSuffix(upstreamFile, ".c") {
@@ -209,7 +209,7 @@ func vendorizeCFile(upstreamFile string) error {
 	return os.WriteFile(filepath.Join(lzmaDirectory, shimFile), []byte(content), 0666)
 }
 
-func removeVendorizedCFiles() {
+func removeVendoredCFiles() {
 	_ = os.RemoveAll(filepath.Join(lzmaDirectory, "src"))
 	entries, _ := os.ReadDir(lzmaDirectory)
 	for _, entry := range entries {
