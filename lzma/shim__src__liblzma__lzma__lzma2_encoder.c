@@ -3,7 +3,7 @@
 // This file is released under the MIT license but every source file it includes
 // (directly and transitively) is in the public domain.
 //
-// Generated when the upstream repository was at commit 2327a461e1afce862c22269b80d3517801103c1b.
+// Generated when the upstream repository was at commit REMOVEME.
 
 #ifndef GOXZ_SKIP_C_COMPILATION
 #include "src/liblzma/lzma/lzma2_encoder.c"

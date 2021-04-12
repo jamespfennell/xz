@@ -82,6 +82,7 @@ Options:
 
 var vendorizeAllFiles bool
 var skipBuldAndTests bool
+var optimizeFiles bool
 
 func init() {
 	// TODO: implement an optimize flag
@@ -89,6 +90,8 @@ func init() {
 		"vendorize all files in the upstream repo, not just those explicitly required")
 	flag.BoolVar(&skipBuldAndTests, "skip-build", false,
 		"skip build and tests after vendorizing")
+	flag.BoolVar(&optimizeFiles, "optimize", false,
+		"optimize the files by removing source files not needed for the tests to pass")
 }
 
 func main() {
@@ -98,7 +101,7 @@ func main() {
 	}
 	flag.Parse()
 
-	gitHash, err := upstreamGitHash()
+	_, err := upstreamGitHash()
 	if err != nil {
 		fmt.Println("Failed to determine the Git hash of the upstream repo:", err)
 		os.Exit(1)
@@ -115,7 +118,32 @@ func main() {
 		files = split(requiredUpstreamFiles)
 	}
 
+	if optimizeFiles {
+		files = optimize(files)
+	}
+
+	if !vendorize(files, true) {
+		os.Exit(1)
+	}
+}
+
+func optimize(files []string) []string {
+	fmt.Println("Optimizing files")
+	for i, file := range files {
+		thisFiles := files[:i]
+		thisFiles = append(thisFiles, files[i+1:]...)
+		fmt.Printf("Testing the build without %s\n", file)
+		if vendorize(thisFiles, false) {
+			fmt.Println("Passed!")
+		}
+		fmt.Println("Failed!")
+	}
+	return files
+}
+
+func vendorize(files []string, verbose bool) bool {
 	removeVendorizedCFiles()
+	gitHash := "REMOVEME"
 	for _, file := range files {
 		fmt.Println("Vendorizing", file)
 		// TODO: validate that the file is in the public domain
@@ -127,14 +155,21 @@ func main() {
 		}
 	}
 	if skipBuldAndTests {
-		return
+		return true
 	}
-	fmt.Println("Running build and tests")
+	if verbose {
+		fmt.Println("Running build and tests")
+	}
 	if !runBuildAndTests() {
-		fmt.Println("Build and tests failed! Run `go build -a goxz/goxz.go` to `go test ./...` to investigate.")
-		os.Exit(1)
+		if verbose {
+			fmt.Println("Build and tests failed! Run `go build -a goxz/goxz.go` to `go test ./...` to investigate.")
+		}
+		return false
 	}
-	fmt.Println("Success")
+	if verbose {
+		fmt.Println("Success")
+	}
+	return true
 }
 
 func listAllCFilesInUpstream() ([]string, error) {
@@ -146,7 +181,7 @@ func listAllCFilesInUpstream() ([]string, error) {
 				return nil
 			}
 			name := d.Name()
-			if !strings.HasSuffix(name, ".c") {
+			if !strings.HasSuffix(name, ".c") && !strings.HasSuffix(name, ".h"){
 				return nil
 			}
 			// The *tablegen.c files are helper files with main functions. Including them means the library can't
@@ -202,14 +237,17 @@ func vendorizeCFile(upstreamFile string, gitHash string) error {
 }
 
 func removeVendorizedCFiles() {
+	_ = os.RemoveAll("lzma/src")
 	entries, _ := os.ReadDir("lzma")
 	for _, entry := range entries {
-		if strings.HasPrefix(entry.Name(), "upstream__src__") && strings.HasSuffix(entry.Name(), ".c") {
+		if strings.HasPrefix(entry.Name(), "shim__src__") && strings.HasSuffix(entry.Name(), ".c") {
 			_ = os.Remove(filepath.Join("lzma", entry.Name()))
 		}
 	}
 }
 
+// TODO: remove this and the git hash.
+//  The git submodule is good enough
 // upstreamGitHash determines the current hash of the upstream repo
 func upstreamGitHash() (string, error) {
 	cmd := exec.Command("git", "rev-parse", "HEAD")
