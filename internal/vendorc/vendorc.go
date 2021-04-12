@@ -13,18 +13,18 @@ import (
 //go:embed shim_template.c.tmpl
 var cTemplate string
 
-const usage = `This script vendorizes C files in the upstream xz repository to this repo.
+const usage = `This script vendors C files in the upstream xz repository to this repo.
 It MUST be run with the repo root as the current working directory.
 Usage:
 
-	go run internal/vendorize/vendorize.go [options]
+	go run internal/vendorc/vendorc.go [options]
 
 Options:
 
 `
 
-const thisDirectory = `internal/vendorize`
-const upstreamRoot = `internal/vendorize/upstream`
+const thisDirectory = `internal/vendorc`
+const upstreamRoot = `internal/vendorc/upstream`
 const goXzCommand = `internal/goxz/goxz.go`
 const lzmaDirectory = `lzma`
 const requiredFiles = `required_files.txt`
@@ -36,9 +36,9 @@ var optimizeFiles bool
 
 func init() {
 	flag.BoolVar(&vendorizeAllFiles, "all", false,
-		"vendorize all files in the upstream repo, not just those explicitly required")
+		"vendor all C files in the upstream repo, not just those explicitly required")
 	flag.BoolVar(&skipBuldAndTests, "skip-build", false,
-		"skip build and tests after vendorizing")
+		"skip build and tests after vendoring")
 	flag.BoolVar(&optimizeFiles, "optimize", false,
 		"optimize the files by removing source files not needed for the tests to pass")
 }
@@ -111,10 +111,10 @@ func vendorize(files []string, verbose bool) bool {
 	removeVendorizedCFiles()
 	for _, file := range files {
 		if verbose {
-			fmt.Println("Vendorizing", file)
+			fmt.Println("Vendoring", file)
 		}
 		if err := vendorizeCFile(file); err != nil {
-			fmt.Printf("Failed to vendorize C file %s: %s\n", file, err)
+			fmt.Printf("Failed to vendor C file %s: %s\n", file, err)
 			os.Exit(1)
 		}
 	}
