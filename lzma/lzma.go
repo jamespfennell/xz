@@ -23,12 +23,28 @@ package lzma
 #cgo CFLAGS: -Isrc/liblzma/rangecoder
 #cgo CFLAGS: -Isrc/liblzma/simple
 
+// This block of flags specify which lzma2 features to link in.
 #cgo CFLAGS: -DHAVE_ENCODER_LZMA2 -DHAVE_DECODER_LZMA2
 #cgo CFLAGS: -DHAVE_CHECK_CRC32 -DHAVE_CHECK_CRC64
 // The following 3 flags were determined by inspecting lzma_encoder_presets.c
 #cgo CFLAGS: -DHAVE_MF_HC3 -DHAVE_MF_HC4 -DHAVE_MF_BT4
-// Note that only 64-bit architectures are supported becase we set SIZEOF_SIZE_T=8
-#cgo CFLAGS: -DHAVE_STDBOOL_H -DSIZEOF_SIZE_T=8 -DHAVE_STDINT_H -DHAVE_INTTYPES_H
+
+// We need to manually specify whether the architecture is 32-bit or 64-bit using the
+// SIZEOF_SIZE_T macro. We do this by manually enumerating all 32-bit architectures
+// supported by Go, marking those as 32-bit, and assuming all others are 64-bit.
+// This has the caveat that if support for a new 32-bit architecture is added the
+// package will not work for that architecture until it is added here. However, a new
+// 32-bit architecture is unlikely. The canonical list of architectures supported by
+// Go is here:
+// https://github.com/golang/go/blob/master/src/go/build/syslist.go
+#cgo  386  amd64p32  arm  armbe  mips  mipsle  mips64p32  mips64p32le  ppc  riscv  s390  sparc CFLAGS: -DSIZEOF_SIZE_T=4
+#cgo !386,!amd64p32,!arm,!armbe,!mips,!mipsle,!mips64p32,!mips64p32le,!ppc,!riscv,!s390,!sparc CFLAGS: -DSIZEOF_SIZE_T=8
+
+// We assume these C standard libraries are available.
+#cgo CFLAGS: -DHAVE_STDBOOL_H -DHAVE_STDINT_H -DHAVE_INTTYPES_H
+
+// Performance improvement for 32-bit and 64-bit x86.
+#cgo 386 amd64 CFLAGS: -DTUKLIB_FAST_UNALIGNED_ACCESS
 
 #include <stdlib.h>
 #include <string.h>
