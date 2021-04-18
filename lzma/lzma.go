@@ -23,8 +23,6 @@ package lzma
 #cgo CFLAGS: -Isrc/liblzma/rangecoder
 #cgo CFLAGS: -Isrc/liblzma/simple
 
-// #cgo CFLAGS: -DTUKLIB_SYMBOL_PREFIX=lzma_
-
 // This block of flags specify which lzma2 features to link in.
 #cgo CFLAGS: -DHAVE_ENCODER_LZMA2 -DHAVE_DECODER_LZMA2
 #cgo CFLAGS: -DHAVE_CHECK_CRC32 -DHAVE_CHECK_CRC64
