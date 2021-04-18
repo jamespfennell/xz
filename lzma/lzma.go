@@ -23,7 +23,7 @@ package lzma
 #cgo CFLAGS: -Isrc/liblzma/rangecoder
 #cgo CFLAGS: -Isrc/liblzma/simple
 
-#cgo CFLAGS: -DTUKLIB_SYMBOL_PREFIX lzma_
+// #cgo CFLAGS: -DTUKLIB_SYMBOL_PREFIX=lzma_
 
 // This block of flags specify which lzma2 features to link in.
 #cgo CFLAGS: -DHAVE_ENCODER_LZMA2 -DHAVE_DECODER_LZMA2
@@ -39,14 +39,14 @@ package lzma
 // 32-bit architecture is unlikely. The canonical list of architectures supported by
 // Go is here:
 // https://github.com/golang/go/blob/master/src/go/build/syslist.go
-#cgo  386  amd64p32  arm  armbe  mips  mipsle  mips64p32  mips64p32le  ppc  riscv  s390  sparc -DSIZEOF_SIZE_T=4
-#cgo !386,!amd64p32,!arm,!armbe,!mips,!mipsle,!mips64p32,!mips64p32le,!ppc,!riscv,!s390,!sparc -DSIZEOF_SIZE_T=8
+#cgo  386  amd64p32  arm  armbe  mips  mipsle  mips64p32  mips64p32le  ppc  riscv  s390  sparc CFLAGS: -DSIZEOF_SIZE_T=4
+#cgo !386,!amd64p32,!arm,!armbe,!mips,!mipsle,!mips64p32,!mips64p32le,!ppc,!riscv,!s390,!sparc CFLAGS: -DSIZEOF_SIZE_T=8
 
 // We assume these C standard libraries are available.
 #cgo CFLAGS: -DHAVE_STDBOOL_H -DHAVE_STDINT_H -DHAVE_INTTYPES_H
 
 // Performance improvement for 32-bit and 64-bit x86.
-#cgo 386 amd64 -DTUKLIB_FAST_UNALIGNED_ACCESS
+#cgo 386 amd64 CFLAGS: -DTUKLIB_FAST_UNALIGNED_ACCESS
 
 #include <stdlib.h>
 #include <string.h>
