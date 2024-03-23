@@ -30,6 +30,11 @@ const lzmaDirectory = `lzma`
 const requiredFiles = `required_files.txt`
 const publicDomainStatement = `This file has been put into the public domain.`
 
+// allowedLicenses is a list of allowed licenses from source code that
+// is copied over. This is used for searching SPDX-License-Identifier
+// tags.
+var allowedLicenses = []string{"0BSD"}
+
 var vendorAllFiles bool
 var skipBuildAndTests bool
 var optimizeFiles bool
@@ -220,6 +225,13 @@ func removeVendoredCFiles() {
 }
 
 func isPublicDomain(path, content string) bool {
+	// Check for SPDX-License-Identifier tags
+	for _, license := range allowedLicenses {
+		if strings.Contains(content, fmt.Sprintf("SPDX-License-Identifier: %s", license)) {
+			return true
+		}
+	}
+
 	if strings.Contains(content, publicDomainStatement) {
 		return true
 	}
