@@ -118,6 +118,6 @@ The documentation for this library is really excellent, which made this package 
 
 ## License
 
-All files in the lzma/src tree are copied from the upstream lzma2 repository and are in the public domain.
+All files in the lzma/src tree are copied from the upstream lzma2 repository and are licensed under the OBSD license.
 Alice In Wonderland is used for testing only, and is in the public domain.
 All other files in the repository are released under the MIT license.
