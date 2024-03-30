@@ -8,6 +8,32 @@ The package does not require the lzma2 library to be installed, and on
     
     go get github.com/jamespfennell/xz@v0.1.2
 
+
+## Security notice
+
+On March 29 2024 a [backdoor in the upstream xz repository was discovered](https://news.ycombinator.com/item?id=39865810).
+This backdoor was the result of a successful ~2 year effort by a malicious actor to
+    take control of the upstream xz repo.
+
+This Go package uses a vendored snapshot of the upstream xz repository from March 2020, 2 years before this attack started.
+Specifically the snapshot was taken at
+    [upstream commit `2327a461`](https://git.tukaani.org/?p=xz.git;a=commit;h=2327a461e1afce862c22269b80d3517801103c1b).
+This commit was the release commit for
+    [version 5.2.5 of xz](https://www.mail-archive.com/xz-devel@tukaani.org/msg00359.html).
+This commit is [pinned in this repository using a Git submodule](https://github.com/jamespfennell/xz/tree/main/internal/vendorc).
+The C files themselves were copied from the upstream repository into this repository.
+
+Thus, this Go package is still safe to use if you assume
+    (a) the backdoor from March 2024 is the first successful compromise of upstream and
+    (b) that _this_ repository has not been compromised by me, the maintainer, jamespfennell@.
+Your security posture will determine whether these assumptions are safe to make.
+Honestly at this point it's probably just easier to use zstd instead of xz.
+
+Finally, we note that the upstream attacker made about ~750 commits over 2 years to upstream
+    before being discovered.
+Given the state of upstream, **we will never be updating the upstream snapshot used in this repository**.
+
+
 ## Usage
 
 The API follows the standard Go API for compression packages.
